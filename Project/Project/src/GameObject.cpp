@@ -3,7 +3,7 @@
 // Connor Steele and Chris Gix Game Object Implementation
 
 
-GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, float vel, glm::vec3 orient, bool visibleBbox)
+GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, float vel, glm::vec3 orient, bool visibleBbox, int team)
 {
 	this->nameObj = gameObjName;
 	this->objModel = objModel;
@@ -61,12 +61,12 @@ void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr
 void GameObject::DoCollisions(std::shared_ptr<MatrixStack> &M) //std::shared_ptr<GameObject> world
 {
 
-	if (position.z > 40.0f || position.z < -40.0f || position.x > 40.0f || position.x < -40.0f)
-	{
-		// Invert the z component of the orientation vector
-		this->orientation = glm::vec3(orientation.x, orientation.y, -1.f * orientation.z);
+	//if (position.z > 40.0f || position.z < -40.0f || position.x > 40.0f || position.x < -40.0f)
+	//{
+	//	// Invert the z component of the orientation vector
+	//	this->orientation = glm::vec3(orientation.x, orientation.y, -1.f * orientation.z);
 
-	}
+	//}
 	
 }
 

@@ -44,6 +44,7 @@ float lastFrame = 0.0f;
 int nbFrames = 0;
 float elapsedTime = 0.0f;
 
+bool isCaptureCursor = false;
 
 //Camera:
 vec3 eye = vec3(0, 0.5, 0); //was originally 0,0,0
@@ -132,7 +133,7 @@ public:
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
 		//Keys to control the camera movement
-		else if (key == GLFW_KEY_W)
+		else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
 			center = center + (camMove * movespd);
 			eye = eye + (camMove * movespd);
@@ -143,21 +144,21 @@ public:
 			}
 
 		}
-		else if (key == GLFW_KEY_A)
+		else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
 			//Left
 			center += cross(up, camMove) * movespd;
 			eye += cross(up, camMove) * movespd;
 
 		}
-		else if (key == GLFW_KEY_D)
+		else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
 			//Right
 			center -= cross(up, camMove) * movespd;
 			eye -= cross(up, camMove) * movespd;
 
 		}
-		else if (key == GLFW_KEY_S)
+		else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
 			center = center - (movespd * camMove);
 			//Backward
@@ -168,6 +169,11 @@ public:
 				eye.y = 0;
 			}
 
+		}
+		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
+		{
+			isCaptureCursor = !isCaptureCursor;
+			printf("Cursor is" + isCaptureCursor);
 		}
 	}
 
@@ -202,8 +208,17 @@ public:
 		newX = posX - tempX;
 		newY = posY - tempY;
 
+		// Different cursor modes (Select mode vs camera mode)
+		if (isCaptureCursor) {
+			glfwSetInputMode(windowManager->getHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+		else {
+			glfwSetInputMode(windowManager->getHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+		
+
 		//set up the input mode
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Set cursor enabled or disabled on window
 
 		// Update pitch and yaw
 		phi = phi + (-newY / 400);
@@ -403,7 +418,14 @@ public:
 		glm::vec3 position = glm::vec3(0.0f);
 		float velocity = 0.0f;
 		glm::vec3 orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, velocity, orientation, false);
+		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+
+
+		// Setup temp player bunny
+		position = vec3(0.0f, 0.0f, 0.0f);
+		orientation = vec3(0.0f, 0.0f, 1.0f);
+		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		sceneActorGameObjs.push_back(PlayerBun);
 
 
 	}
@@ -576,7 +598,7 @@ public:
 
 	
 
-	void renderBun(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, int surveillancePOV, int offsetX, int offsetZ)
+	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, int surveillancePOV, int offsetX, int offsetZ)
 	{
 		vec3 camLoc;
 		if (surveillancePOV == 1)
@@ -593,7 +615,7 @@ public:
 		prog->bind(); // Bind the Simple Shader
 
 
-
+		// 
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
 			M->pushMatrix();
 			M->loadIdentity();
@@ -644,7 +666,7 @@ public:
 		float currentFrame = glfwGetTime();
 		float currentTime = glfwGetTime();
 		nbFrames += 1;
-		// At intervals print out information to the console
+		// ---- At intervals print out information to the console
 		if (currentTime - lastTime >= 1.0 ) {
 			printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
 			printf("Objects on the ground: %d\n", sceneActorGameObjs.size()); // Print out the number of objects in the game
@@ -659,27 +681,31 @@ public:
 
 
 		//--TODO: Move maybe. Spawns random bunnies
-		bunSpawn -= deltaTime;
-		if (bunSpawn <= 0 && (sceneActorGameObjs.size() < 40)) // Spawn a bunny if the timer is up and there are less than 25 in the scene
-		{
-			printf("spawn bunny\n");
-			bunSpawn = bunSpawnReset;
-			//Template for random float
-			//float r3 = LO + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(HI-LO)));
-			float randX = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
-			float randZ = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
-			float randVel = 1.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (8.0f - 1.0f)));
-			
-			string BunName = "bunBun" + to_string(bunbunCounter);
+		//bunSpawn -= deltaTime;
+		//if (bunSpawn <= 0 && (sceneActorGameObjs.size() < 40)) // Spawn a bunny if the timer is up and there are less than 25 in the scene
+		//{
+		//	printf("spawn bunny\n");
+		//	bunSpawn = bunSpawnReset;
+		//	//Template for random float
+		//	//float r3 = LO + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(HI-LO)));
+		//	float randX = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
+		//	float randZ = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
+		//	float randVel = 1.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (8.0f - 1.0f)));
+		//	
+		//	string BunName = "bunBun" + to_string(bunbunCounter);
 
-			vec3 position = vec3(randX, 0.0f, randZ);
+		//	vec3 position = vec3(randX, 0.0f, randZ);
 
-			vec3 orientation = vec3(0.0f, 0.0f, 1.0f);
+		//	vec3 orientation = vec3(0.0f, 0.0f, 1.0f);
 
-			shared_ptr<GameObject> newBunny = make_shared<GameObject>(BunName, bunnyShape, "../resources/", prog, position, randVel, orientation, true);
-			sceneActorGameObjs.push_back(newBunny);
+		//	shared_ptr<GameObject> newBunny = make_shared<GameObject>(BunName, bunnyShape, "../resources/", prog, position, randVel, orientation, true);
+		//	sceneActorGameObjs.push_back(newBunny);
 
-		}
+		//}
+
+
+		
+
 
 		// Clear framebuffer.
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -717,7 +743,7 @@ public:
 
 		M->pushMatrix();
 		//checkAllGameObjects();
-		renderBun(M, P, 0, 0, 0);
+		renderSceneActors(M, P, 0, 0, 0);
 		checkAllGameObjects();
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();
@@ -746,7 +772,7 @@ int main(int argc, char **argv)
 	// and GL context, etc.
 
 	WindowManager *windowManager = new WindowManager();
-	windowManager->init(1280, 720); //was 512,512.
+	windowManager->init(1920, 1080); //was 512,512.
 	windowManager->setEventCallbacks(application);
 	application->windowManager = windowManager;
 
@@ -770,37 +796,6 @@ int main(int argc, char **argv)
 		// Poll for and process events.
 		glfwPollEvents();
 
-		//update spinning Orbs
-		if (orbRotate == 360.0)
-		{
-			orbRotate = 0.0;
-
-		}
-		else
-		{
-			orbRotate += 2.0;
-		}
-		if (smallRotate == 360.0)
-		{
-			smallRotate = 0.0;
-
-		}
-		else
-		{
-			smallRotate += 0.1;
-		}
-
-		//update spinning Bunnies
-
-		if (bunnyRotate == 360.0)
-		{
-			bunnyRotate = 0.0;
-
-		}
-		else
-		{
-			bunnyRotate += 0.025;
-		}
 
 	}
 
