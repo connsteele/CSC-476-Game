@@ -676,7 +676,7 @@ public:
 
 			vec3 orientation = vec3(0.0f, 0.0f, 1.0f);
 
-			shared_ptr<GameObject> newBunny = make_shared<GameObject>(BunName, bunnyShape, "resources/", prog, position, randVel, orientation, true);
+			shared_ptr<GameObject> newBunny = make_shared<GameObject>(BunName, bunnyShape, "../resources/", prog, position, randVel, orientation, true);
 			sceneActorGameObjs.push_back(newBunny);
 
 		}
@@ -733,7 +733,7 @@ public:
 int main(int argc, char **argv)
 {
 	// Where the resources are loaded from
-	std::string resourceDir = "resources/";
+	std::string resourceDir = "../resources/";
 
 	if (argc >= 2)
 	{
