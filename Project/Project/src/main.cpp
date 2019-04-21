@@ -892,6 +892,7 @@ public:
 		P->perspective(45.0f, aspect, 0.01f, 100.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well
 
 
+
 		/*Draw the actual scene*/
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
