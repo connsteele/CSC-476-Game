@@ -46,12 +46,18 @@ float elapsedTime = 0.0f;
 
 bool isCaptureCursor = false;
 
-//Camera:
+//--- Camera Variables
+bool followCamera = false; // If camera is in Overhead view or follow view
+// Possession Camera
 vec3 eye = vec3(0, 0.5, 0); //was originally 0,0,0
 vec3 up = vec3(0, 1, 0);
-
-vec3 center;
+vec3 pcamcenter;
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
+
+
+// Properties for Overhead Camera
+vec3 ocamCenter;
+
 
 //Animation:
 float orbRotate = 0.0;
@@ -135,7 +141,7 @@ public:
 		//Keys to control the camera movement
 		else if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
-			center = center + (camMove * movespd);
+			pcamcenter = pcamcenter + (camMove * movespd);
 			eye = eye + (camMove * movespd);
 
 			if (eye.y <= 0)
@@ -147,20 +153,20 @@ public:
 		else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
 			//Left
-			center += cross(up, camMove) * movespd;
+			pcamcenter += cross(up, camMove) * movespd;
 			eye += cross(up, camMove) * movespd;
 
 		}
 		else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
 			//Right
-			center -= cross(up, camMove) * movespd;
+			pcamcenter -= cross(up, camMove) * movespd;
 			eye -= cross(up, camMove) * movespd;
 
 		}
 		else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
-			center = center - (movespd * camMove);
+			pcamcenter = pcamcenter - (movespd * camMove);
 			//Backward
 			eye = eye - (camMove * movespd);
 
@@ -208,31 +214,33 @@ public:
 		newX = posX - tempX;
 		newY = posY - tempY;
 
-		// Different cursor modes (Select mode vs camera mode)
+		// --- Change camera movement based on different cursor modes (Select mode vs camera mode)
 		if (isCaptureCursor) {
+
+			//Set input mode
 			glfwSetInputMode(windowManager->getHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+			// Update pitch and yaw
+			phi = phi + (-newY / 400);
+			theta = theta + (newX / 400);
+
+			// Limit the angle of V up and down to 80 deg
+			if (phi > 80 * to_radians)
+			{
+				phi = 80 * to_radians; // restrict to 80 degrees
+			}
+			else if (phi < -80 * to_radians)
+			{
+				phi = -(80 * to_radians);
+			}
 		}
-		else {
+		else // Don't rotate the camera when the cursor is visible
+		{ 
 			glfwSetInputMode(windowManager->getHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 		
 
-		//set up the input mode
-		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Set cursor enabled or disabled on window
-
-		// Update pitch and yaw
-		phi = phi + (-newY / 400);
-		theta = theta + (newX / 400);
-
-		// Limit the angle of V up and down
-		if (phi > 80 * to_radians)
-		{
-			phi = 80 * to_radians; // restrict to 80 degrees
-		}
-		else if (phi < -80 * to_radians)
-		{
-			phi = -(80 * to_radians);
-		}
+		
 
 		//Update the coordinates of the temps
 		tempY = tempY + newY;
@@ -485,7 +493,7 @@ public:
 	{
 		prog->bind();
 		// Recompute the position of the box b4 drawing it
-		p1_bboxCenter = center;
+		p1_bboxCenter = pcamcenter;
 		p1_bboxTransform = translate(glm::mat4(1), p1_bboxCenter) * glm::scale(glm::mat4(1), p1_bboxSize);
 
 		//Check Collisions
@@ -547,11 +555,11 @@ public:
 		M->loadIdentity();
 		M->translate(vec3(0, -1, 0)); //move the plane down a little bit in y space 
 		M->scale(vec3(40, .1, 40)); // turn the cube into a plane
-		groundbox->step(deltaTime, M, P, camLoc, center, up);
+		groundbox->step(deltaTime, M, P, camLoc, pcamcenter, up);
 		//add uniforms to shader
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, center, up)));
+		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, pcamcenter, up)));
 		glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
 		//glUniform3f(prog->getUniform("eye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
@@ -621,7 +629,7 @@ public:
 			M->loadIdentity();
 
 			// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-			sceneActorGameObjs[i]->step(deltaTime, M, P, camLoc, center, up);
+			sceneActorGameObjs[i]->step(deltaTime, M, P, camLoc, pcamcenter, up);
 			// bunBun->DoCollisions()
 
 
@@ -639,7 +647,7 @@ public:
 			}
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, center, up)));
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, pcamcenter, up)));
 			
 			glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
 			sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
@@ -717,7 +725,7 @@ public:
 		x = radius * cos(phi)*cos(theta);
 		y = radius * sin(phi);
 		z = radius * cos(phi)*sin(theta);
-		center = eye + vec3(x, y, z);
+		pcamcenter = eye + vec3(x, y, z);
 		camMove = vec3(x, y, z);
 
 		// Create the matrix stacks
@@ -727,7 +735,7 @@ public:
 
 		// Apply perspective projection.
 		P->pushMatrix();
-		P->perspective(45.0f, aspect, 0.01f, 100.0f);
+		P->perspective(45.0f, aspect, 0.01f, 100.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well
 
 
 		/*Draw the actual scene*/
