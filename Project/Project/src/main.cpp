@@ -47,7 +47,7 @@ float elapsedTime = 0.0f;
 bool isCaptureCursor = false;
 
 //--- Camera Variables
-bool isOverheadView = false; // If camera is in Overhead view or follow view, currently overhead view is broken
+bool isOverheadView = true; // If camera is in Overhead view or follow view, currently overhead view is broken
 // Possession Camera
 vec3 pCamEye = vec3(0, 0.5, 0); //was originally 0,0,0
 vec3 up = vec3(0, 1, 0);
@@ -56,8 +56,8 @@ vec3 pcamcenter;
 
 
 // Properties for Overhead Camera
-vec3 ocamCenter = vec3(-1.f, -20.f, -7.f);
-vec3 oCamEye = vec3(0.f, 0.f, 0.f);
+vec3 ocamCenter = vec3(-0.6f, 33.f, 47.f);
+vec3 oCamEye = vec3(-0.6f, 34.f, 48.f);
 
 
 //Animation:
@@ -216,7 +216,17 @@ public:
 		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
 		{
 			isCaptureCursor = !isCaptureCursor;
-			printf("Cursor is" + isCaptureCursor);
+			printf("Cursor Capture is %d\n", isCaptureCursor);
+		}
+		else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
+		{
+			printf("pcam center is: x:%f y:%f z:%f\n", pcamcenter.x, pcamcenter.y, pcamcenter.z);
+			printf("pcam eye is: x:%f y:%f z:%f\n", pCamEye.x, pCamEye.y, pCamEye.z);
+
+		}
+		else if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
+		{
+			isOverheadView = !isOverheadView;
 		}
 	}
 
@@ -259,43 +269,47 @@ public:
 			ray_wor = normalize(ray_wor);
 			printf("ray in world coordinates: %f, %f, %f", ray_wor.x, ray_wor.y, ray_wor.z);
 
-			GameObject currObject = *sceneActorGameObjs[0];
 
-			vec3 dirfrac = vec3(1.0f / ray_wor.x, 1.0f / ray_wor.y, 1.0f / ray_wor.z);
+			for (int i = 0; i < sceneActorGameObjs.size(); i++) {
 
 
-			vec3 lb = vec3(currObject.min_x, currObject.min_y, currObject.min_z);
-			vec3 rt = vec3(currObject.max_x, currObject.max_y, currObject.max_z);
+				GameObject currObject = *sceneActorGameObjs[i];
 
-			float t1 = (lb.x - pcamcenter.x)*dirfrac.x;
-			float t2 = (rt.x - pcamcenter.x)*dirfrac.x;
-			float t3 = (lb.y - pcamcenter.y)*dirfrac.y;
-			float t4 = (rt.y - pcamcenter.y)*dirfrac.y;
-			float t5 = (lb.z - pcamcenter.z)*dirfrac.z;
-			float t6 = (rt.z - pcamcenter.z)*dirfrac.z;
+				vec3 dirfrac = vec3(1.0f / ray_wor.x, 1.0f / ray_wor.y, 1.0f / ray_wor.z);
 
-			float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-			float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
 
-			float t;
+				vec3 lb = vec3(currObject.min_x, currObject.min_y, currObject.min_z);
+				vec3 rt = vec3(currObject.max_x, currObject.max_y, currObject.max_z);
 
-			if (tmax < 0)
-			{
-				t = tmax;
-				printf("Did not hit object\n");
+				float t1 = (lb.x - pcamcenter.x)*dirfrac.x;
+				float t2 = (rt.x - pcamcenter.x)*dirfrac.x;
+				float t3 = (lb.y - pcamcenter.y)*dirfrac.y;
+				float t4 = (rt.y - pcamcenter.y)*dirfrac.y;
+				float t5 = (lb.z - pcamcenter.z)*dirfrac.z;
+				float t6 = (rt.z - pcamcenter.z)*dirfrac.z;
+
+				float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+				float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+				float t;
+
+				if (tmax < 0)
+				{
+					t = tmax;
+					printf("Did not hit object\n");
+				}
+
+				// if tmin > tmax, ray doesn't intersect AABB
+				if (tmin > tmax)
+				{
+					t = tmax;
+					printf("Did not hit object\n");
+				}
+
+				t = tmin;
+				printf("DID hit object\n");
+
 			}
-
-			// if tmin > tmax, ray doesn't intersect AABB
-			if (tmin > tmax)
-			{
-				t = tmax;
-				printf("Did not hit object\n");
-			}
-
-			t = tmin;
-			printf("DID hit object\n");
-
-
 
 		}
 
@@ -674,7 +688,15 @@ public:
 		//add uniforms to shader
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, pcamcenter, up)));
+		if (isOverheadView)
+		{
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, ocamCenter, up)));
+		}
+		else
+		{
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, pcamcenter, up)));
+
+		}
 		glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
@@ -726,7 +748,7 @@ public:
 		vec3 camLoc;
 		if (overheadView)
 		{
-			camLoc = vec3(0, 0, 0); // Change to use oCampCamEye
+			camLoc = oCamEye; // Change to use oCampCamEye
 
 		}
 		else // Possession follow cam
@@ -806,9 +828,9 @@ public:
 		nbFrames += 1;
 		// ---- At intervals print out information to the console
 		if (currentTime - lastTime >= 1.0 ) {
-			printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
-			printf("Objects on the ground: %d\n", sceneActorGameObjs.size()); // Print out the number of objects in the game
-			printf("Objects Collided with %d\n\n", p1Collisions);
+			//printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
+			//printf("Objects on the ground: %d\n", sceneActorGameObjs.size()); // Print out the number of objects in the game
+			//printf("Objects Collided with %d\n\n", p1Collisions);
 			nbFrames = 0;
 			lastTime += 1.0;
 		}
@@ -856,6 +878,7 @@ public:
 		y = radius * sin(phi);
 		z = radius * cos(phi)*sin(theta);
 		pcamcenter = pCamEye + vec3(x, y, z);
+		//ocamCenter = oCamEye; // Trying
 		camMove = vec3(x, y, z);
 
 		// Create the matrix stacks
