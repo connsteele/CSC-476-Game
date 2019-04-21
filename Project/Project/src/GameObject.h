@@ -29,6 +29,10 @@ public:
 	bool hitByPlayer, visibleBbox;
 	int team; // 0 is neutral, 1 for robots(player team), 2 for aliens
 
+	GLfloat min_x, max_x,
+		min_y, max_y,
+		min_z, max_z;
+
 
 
 	GameObject(const std::string& name, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, float vel, glm::vec3 orient, bool visibleBbox, int team);

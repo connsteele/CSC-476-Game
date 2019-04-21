@@ -129,9 +129,7 @@ void GameObject::initBbox()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // Unbind
 
-	GLfloat min_x, max_x,
-		min_y, max_y,
-		min_z, max_z;
+	
 
 	// Get the position buffer from the model
 	std::vector<float> modelVertPosBuf = objModel->getPosBuf();
