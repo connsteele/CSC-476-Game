@@ -291,39 +291,11 @@ public:
 
 				GameObject currObject = *sceneActorGameObjs[i];
 
-				vec3 dirfrac = vec3(1.0f / ray_wor.x, 1.0f / ray_wor.y, 1.0f / ray_wor.z);
+				bool isClicked = RayTraceCamera(ray_wor, sceneActorGameObjs[i]);
 
-
-				vec3 lb = vec3(currObject.min_x, currObject.min_y, currObject.min_z);
-				vec3 rt = vec3(currObject.max_x, currObject.max_y, currObject.max_z);
-
-				float t1 = (lb.x - curCamCenter.x)*dirfrac.x;
-				float t2 = (rt.x - curCamCenter.x)*dirfrac.x;
-				float t3 = (lb.y - curCamCenter.y)*dirfrac.y;
-				float t4 = (rt.y - curCamCenter.y)*dirfrac.y;
-				float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
-				float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
-
-				float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-				float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
-
-				float t;
-
-				if (tmax < 0)
-				{
-					t = tmax;
-					printf("Did not hit object\n");
+				if (isClicked) {
+					printf("Hit Object: %s", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
 				}
-
-				// if tmin > tmax, ray doesn't intersect AABB
-				if (tmin > tmax)
-				{
-					t = tmax;
-					printf("Did not hit object\n");
-				}
-
-				t = tmin;
-				//printf("DID hit object\n");
 
 			}
 
@@ -382,6 +354,47 @@ public:
 	{
 		glViewport(0, 0, width, height);
 	}
+
+
+	bool RayTraceCamera(vec3 rayDir, shared_ptr<GameObject> currObjectPointer)
+	{
+		vec3 dirfrac = vec3(1.0f / rayDir.x, 1.0f / rayDir.y, 1.0f / rayDir.z);
+
+		GameObject currObject = *currObjectPointer;
+
+		vec3 lb = vec3(currObject.min_x, currObject.min_y, currObject.min_z);
+		vec3 rt = vec3(currObject.max_x, currObject.max_y, currObject.max_z);
+
+		float t1 = (lb.x - curCamCenter.x)*dirfrac.x;
+		float t2 = (rt.x - curCamCenter.x)*dirfrac.x;
+		float t3 = (lb.y - curCamCenter.y)*dirfrac.y;
+		float t4 = (rt.y - curCamCenter.y)*dirfrac.y;
+		float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
+		float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
+
+		float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+		float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+		float t;
+
+		if (tmax < 0)
+		{
+			t = tmax;
+			return false;
+		}
+
+		// if tmin > tmax, ray doesn't intersect AABB
+		if (tmin > tmax)
+		{
+			t = tmax;
+			return false;
+		}
+
+		t = tmin;
+		return true;
+	}
+
+
 
 	//Function From Program 3 webpage, case 3 is my implementation for prob 2b
 	void SetMaterial(int i) {
