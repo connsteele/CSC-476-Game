@@ -70,42 +70,42 @@ float smallRotate = 0.0;
 float bunnyRotate = 0.0;
 
 // Class imported from Connor's time in CSC 474
-class camera
-{
-public:
-	glm::vec3 pos, rot;
-	int w, a, s, d;
-	camera()
-	{
-		w = a = s = d = 0;
-		pos = rot = glm::vec3(0, 0, 0);
-	}
-	glm::mat4 process(double ftime)
-	{
-		float speed = 0;
-		if (w == 1)
-		{
-			speed = 10 * ftime;
-		}
-		else if (s == 1)
-		{
-			speed = -10 * ftime;
-		}
-		float yangle = 0;
-		if (a == 1)
-			yangle = -3 * ftime;
-		else if (d == 1)
-			yangle = 3 * ftime;
-		rot.y += yangle;
-		glm::mat4 R = glm::rotate(glm::mat4(1), rot.y, glm::vec3(0, 1, 0));
-		glm::vec4 dir = glm::vec4(0, 0, speed, 1);
-		dir = dir * R;
-		pos += glm::vec3(dir.x, dir.y, dir.z);
-		glm::mat4 T = glm::translate(glm::mat4(1), pos);
-		glm::mat4 Rx = glm::rotate(glm::mat4(1), rot.x, glm::vec3(1, 0, 0)); //Tilt the camera on x-axis based on rot.x, set in initGeom
-		return Rx * R * T;
-	}
-};
+//class camera
+//{
+//public:
+//	glm::vec3 pos, rot;
+//	int w, a, s, d;
+//	camera()
+//	{
+//		w = a = s = d = 0;
+//		pos = rot = glm::vec3(0, 0, 0);
+//	}
+//	glm::mat4 process(double ftime)
+//	{
+//		float speed = 0;
+//		if (w == 1)
+//		{
+//			speed = 10 * ftime;
+//		}
+//		else if (s == 1)
+//		{
+//			speed = -10 * ftime;
+//		}
+//		float yangle = 0;
+//		if (a == 1)
+//			yangle = -3 * ftime;
+//		else if (d == 1)
+//			yangle = 3 * ftime;
+//		rot.y += yangle;
+//		glm::mat4 R = glm::rotate(glm::mat4(1), rot.y, glm::vec3(0, 1, 0));
+//		glm::vec4 dir = glm::vec4(0, 0, speed, 1);
+//		dir = dir * R;
+//		pos += glm::vec3(dir.x, dir.y, dir.z);
+//		glm::mat4 T = glm::translate(glm::mat4(1), pos);
+//		glm::mat4 Rx = glm::rotate(glm::mat4(1), rot.x, glm::vec3(1, 0, 0)); //Tilt the camera on x-axis based on rot.x, set in initGeom
+//		return Rx * R * T;
+//	}
+//};
 class Application : public EventCallbacks
 {
 
@@ -876,9 +876,9 @@ public:
 			float newz = ((1.0f - interp) * curCamEye.z) + (interp * pCamEye.z);
 			curCamEye = vec3(newx, newy, newz);
 
-			newx = ((1.0f - interp) * (curCamEye.x + ox)) + (interp * (pCamEye.x + x));
-			newy = ((1.0f - interp) * (curCamEye.y + oy)) + (interp * (pCamEye.y + y));
-			newz = ((1.0f - interp) * (curCamEye.z + oz)) + (interp * (pCamEye.z + z));
+			newx = ((1.0f - interp) * (curCamEye.x + ox)) + (interp * (pCamEye.x + (radius * cos(phi)*cos(theta) )));
+			newy = ((1.0f - interp) * (curCamEye.y + oy)) + (interp * (pCamEye.y + (radius * sin(phi))));
+			newz = ((1.0f - interp) * (curCamEye.z + oz)) + (interp * (pCamEye.z + (radius * cos(phi)*sin(theta))));
 			curCamCenter = vec3(newx, newy, newz);
 
 			camMove = vec3( ((1.0f - interp) * ox ) + (interp * x),
@@ -898,9 +898,9 @@ public:
 			float newz = ((1.0f - interp) * curCamEye.z) + (interp * oCamEye.z);
 			curCamEye = vec3(newx, newy, newz);
 
-			newx = ((1.0f - interp) * (curCamEye.x + x)) + (interp * (oCamEye.x + ox));
-			newy = ((1.0f - interp) * (curCamEye.y + y)) + (interp * (oCamEye.y + oy));
-			newz = ((1.0f - interp) * (curCamEye.z + z)) + (interp * (oCamEye.z + oz));
+			newx = ((1.0f - interp) * (curCamEye.x + (pCamEye.x + (radius * cos(phi)*cos(theta))))) + (interp * (oCamEye.x + ox));
+			newy = ((1.0f - interp) * (curCamEye.y + (radius * sin(phi)))) + (interp * (oCamEye.y + oy));
+			newz = ((1.0f - interp) * (curCamEye.z + (pCamEye.z + (radius * cos(phi)*sin(theta))))) + (interp * (oCamEye.z + oz));
 			curCamCenter = vec3(newx, newy, newz);
 
 			camMove = vec3(((1.0f - interp) * x) + (interp * ox),
@@ -975,6 +975,7 @@ public:
 			x = radius * cos(phi)*cos(theta);
 			y = radius * sin(phi);
 			z =  radius * cos(phi)*sin(theta);
+			//printf("rots phi: %d, theta: %d \n", phi, theta);
 			curCamCenter = curCamEye + vec3(x, y, z);
 			camMove = vec3(x, y, z);
 		}
@@ -1014,7 +1015,7 @@ public:
 		}
 		else if (camInterp <= 1.0f && camUpdate)
 		{
-			camInterp += (0.005f);
+			camInterp += 0.01f;
 			interpolateCamera(camInterp);
 		}
 
