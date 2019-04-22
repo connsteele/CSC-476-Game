@@ -50,9 +50,9 @@ bool isCaptureCursor = false;
 bool isOverheadView = true; // If camera is in Overhead view or follow view, currently overhead view is broken
 bool camUpdate = false;
 // Possession Camera
-vec3 pCamEye = vec3(0, 0.5, 0); //was originally 0,0,0
+vec3 pCamEye = vec3(0, 10, 10); //was originally 0,0,0
 vec3 up = vec3(0, 1, 0);
-vec3 pCamCenter;
+vec3 pCamCenter = vec3(-0.6f, 5.f, 5.f);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
@@ -321,7 +321,7 @@ public:
 			mat4 ourView = lookAt(curCamEye, curCamCenter, up);
 			vec4 ray_wor_temp = inverse(ourView) * ray_eye;
 			vec3 ray_wor = vec3(ray_wor_temp.x, ray_wor_temp.y, ray_wor_temp.z);
-			ray_wor = normalize(ray_wor);
+			ray_wor = normalize(ray_wor); //Ray direction vector normalized
 			printf("ray in world coordinates: %f, %f, %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
 
 
@@ -943,10 +943,10 @@ public:
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView)
 		{
-			x = radius * cos(phi)*cos(theta);
+			x = radius * cos(phi)*sin(theta);
 			y = radius * sin(phi);
-			z = radius * cos(phi)*sin(theta);
-			curCamCenter = curCamEye + vec3(x, y, z);
+			z = radius * cos(phi)*cos(theta);
+			// curCamCenter = curCamEye + vec3(x, y, z);
 			camMove = vec3(x, y, z);
 		}
 		else
