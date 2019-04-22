@@ -52,16 +52,16 @@ bool camUpdate = false;
 // Possession Camera
 vec3 pCamEye = vec3(0, 10, 10); //was originally 0,0,0
 vec3 up = vec3(0, 1, 0);
-vec3 pCamCenter = vec3(-0.6f, 5.f, 5.f);
+vec3 pCamCenter = vec3(0.f, 0.f, 0.f);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
-vec3 oCamCenter = vec3(-0.6f, 33.f, 47.f);
-vec3 oCamEye = vec3(-0.6f, 34.f, 48.f);
+vec3 oCamCenter = vec3(-33.9f, 51.884197f, 0.059f);
+vec3 oCamEye = vec3(-17.4f, 40.0f, 5.00);
 
 // Current Camera
 vec3 curCamEye = oCamEye;
-vec3 curCamCenter = oCamCenter;
+vec3 curCamCenter;
 // ------------------------
 
 //Animation:
@@ -115,7 +115,7 @@ public:
 	float theta = 0;
 	float phi = 0;
 	float radius = 1;
-	float x, y, z;
+	float x, y, z, ox, oy, oz;
 	const float to_radians = M_PI / 180;
 
 	//Time variable which determines how often bunnies spawn;
@@ -181,7 +181,7 @@ public:
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
 		//Keys to control the camera movement
-		if (!isOverheadView && !camUpdate)
+		if ( !camUpdate)
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -221,55 +221,56 @@ public:
 
 			}
 		}
-		else if (!camUpdate) // --- If the camera is in overhead view
-		{
-			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				curCamCenter.x -= (camMove.x * overheadMoveSpd);
-				curCamCenter.z -= (camMove.z * overheadMoveSpd);
-				curCamEye.x -= (camMove.x * overheadMoveSpd);
-				curCamEye.z -= (camMove.z * overheadMoveSpd);
+		//else if (!camUpdate) // --- If the camera is in overhead view
+		//{
+		//	if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		curCamCenter.x -= (camMove.x * overheadMoveSpd);
+		//		curCamCenter.z -= (camMove.z * overheadMoveSpd);
+		//		curCamEye.x -= (camMove.x * overheadMoveSpd);
+		//		curCamEye.z -= (camMove.z * overheadMoveSpd);
 
-				if (curCamEye.y <= 0)
-				{
-					curCamEye.y = 0;
-				}
+		//		if (curCamEye.y <= 0)
+		//		{
+		//			curCamEye.y = 0;
+		//		}
 
-			}
-			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				//Left
-				curCamCenter -= cross(up, camMove) * overheadMoveSpd;
-				curCamEye -= cross(up, camMove) * overheadMoveSpd;
+		//	}
+		//	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		//Left
+		//		curCamCenter -= cross(up, camMove) * overheadMoveSpd;
+		//		curCamEye -= cross(up, camMove) * overheadMoveSpd;
 
-			}
-			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				//Right
-				curCamCenter += cross(up, camMove) * overheadMoveSpd;
-				curCamEye += cross(up, camMove) * overheadMoveSpd;
+		//	}
+		//	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		//Right
+		//		curCamCenter += cross(up, camMove) * overheadMoveSpd;
+		//		curCamEye += cross(up, camMove) * overheadMoveSpd;
 
-			}
-			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				// Backwards
-				curCamCenter.x += (camMove.x * overheadMoveSpd);
-				curCamCenter.z += (camMove.z * overheadMoveSpd);
-				curCamEye.x += (camMove.x * overheadMoveSpd);
-				curCamEye.z += (camMove.z * overheadMoveSpd);
+		//	}
+		//	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		// Backwards
+		//		curCamCenter.x += (camMove.x * overheadMoveSpd);
+		//		curCamCenter.z += (camMove.z * overheadMoveSpd);
+		//		curCamEye.x += (camMove.x * overheadMoveSpd);
+		//		curCamEye.z += (camMove.z * overheadMoveSpd);
 
-				if (curCamEye.y <= 0)
-				{
-					curCamEye.y = 0;
-				}
+		//		if (curCamEye.y <= 0)
+		//		{
+		//			curCamEye.y = 0;
+		//		}
 
-			}
-		}
+		//	}
+		//}
 
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
 		{
 			camUpdate = true;
+			// isOverheadView = !isOverheadView;
 			
 		}
 		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
@@ -281,6 +282,7 @@ public:
 		{
 			printf("curCamCenter is: x:%f y:%f z:%f\n", curCamCenter.x, curCamCenter.y, curCamCenter.z);
 			printf("curCamEye eye is: x:%f y:%f z:%f\n", curCamEye.x, curCamEye.y, curCamEye.z);
+			printf("cur rot XYZ is: x:%f y:%f z:%f\n", x, y, z);
 
 		}
 	}
@@ -860,24 +862,36 @@ public:
 
 	void interpolateCamera(float interp)
 	{
+		// Check if interp is too large
+		if (interp > 1.0f)
+		{
+			interp = 1.0f;
+		}
 		// 0.0 is starting position and 1.0 is final position
 		if (isOverheadView)
 		{
-			// Check if interp is too large
-			if (interp > 1.0f)
-			{
-				interp = 1.0f;
-			}
-
 			// Compute 
-			float newx = ((1.0f - interp) * curCamCenter.x) + (interp * pCamCenter.x);
+			/*float newx = ((1.0f - interp) * curCamCenter.x) + (interp * pCamCenter.x);
 			float newy = ((1.0f - interp) * curCamCenter.y) + (interp * pCamCenter.y);
 			float newz = ((1.0f - interp) * curCamCenter.z) + (interp * pCamCenter.z);
-			curCamCenter = vec3(newx, newy, newz);
+			curCamCenter = vec3(newx, newy, newz);*/
 
-			newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
-			newy = ((1.0f - interp) * curCamEye.y) + (interp * pCamEye.y);
-			newz = ((1.0f - interp) * curCamEye.z) + (interp * pCamEye.z);
+			float newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
+			float newy = ((1.0f - interp) * curCamEye.y) + (interp * pCamEye.y);
+			float newz = ((1.0f - interp) * curCamEye.z) + (interp * pCamEye.z);
+			curCamEye = vec3(newx, newy, newz);
+		}
+		else
+		{
+			// Compute 
+			/*float newx = ((1.0f - interp) * curCamCenter.x) + (interp * oCamCenter.x);
+			float newy = ((1.0f - interp) * curCamCenter.y) + (interp * oCamCenter.y);
+			float newz = ((1.0f - interp) * curCamCenter.z) + (interp * oCamCenter.z);
+			curCamCenter = vec3(newx, newy, newz);*/
+
+			float newx = ((1.0f - interp) * curCamEye.x) + (interp * oCamEye.x);
+			float newy = ((1.0f - interp) * curCamEye.y) + (interp * oCamEye.y);
+			float newz = ((1.0f - interp) * curCamEye.z) + (interp * oCamEye.z);
 			curCamEye = vec3(newx, newy, newz);
 		}
 	}
@@ -940,26 +954,7 @@ public:
 		/* Leave this code to just draw the meshes alone */
 		float aspect = width / (float)height;
 
-		// Setup yaw and pitch of camera for lookAt()
-		if (!isOverheadView)
-		{
-			x = radius * cos(phi)*sin(theta);
-			y = radius * sin(phi);
-			z = radius * cos(phi)*cos(theta);
-			// curCamCenter = curCamEye + vec3(x, y, z);
-			camMove = vec3(x, y, z);
-		}
-		else
-		{
-			x = radius * cos(phi)*sin(theta);
-			y = radius * sin(phi);
-			z = radius * cos(phi)*cos(theta);
-			
-			//curCamCenter = curCamEye + vec3(x, y, z);
-			//curCamCenter = vec3(x, y, z);
-			camMove = vec3(x, y, z);
-		}
-		//oCamCenter = oCamEye; // Trying
+
 		
 		// Check if the camera should be interpolated
 		static float camInterp = 0.0f;
@@ -970,7 +965,7 @@ public:
 
 			// Toggle the currentCamera after interpolation is finished
 			isOverheadView = !isOverheadView;
-			if (isOverheadView)
+			/*if (isOverheadView)
 			{
 				curCamCenter = oCamCenter;
 				curCamEye = oCamEye;
@@ -979,7 +974,7 @@ public:
 			{
 				curCamCenter = pCamCenter;
 				curCamEye = pCamEye;
-			}
+			}*/
 		}
 		else if (camInterp <= 1.0f && camUpdate)
 		{
@@ -987,6 +982,27 @@ public:
 			interpolateCamera(camInterp);
 		}
 		
+		// Setup yaw and pitch of camera for lookAt()
+		if (!isOverheadView)
+		{
+			x = radius * cos(phi)*cos(theta);
+			y = radius * sin(phi);
+			z =  radius * cos(phi)*sin(theta);
+			curCamCenter = curCamEye + vec3(x, y, z);
+			camMove = vec3(x, y, z);
+		}
+		else
+		{
+			// Hard code the look direction for the over view camera
+			ox = 0.45f;
+			oy = -1.0f;
+			oz = -0.00;
+			vec3 lookDir = vec3(ox, oy, oz);
+			
+			curCamCenter = curCamEye + lookDir;
+			camMove = vec3(ox, oy, oz);
+		}
+		//oCamCenter = oCamEye; // Trying
 
 		// Create the matrix stacks
 		auto P = make_shared<MatrixStack>();
