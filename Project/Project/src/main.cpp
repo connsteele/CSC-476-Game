@@ -52,11 +52,11 @@ bool camUpdate = false;
 // Possession Camera
 vec3 pCamEye = vec3(0, 10, 10); //was originally 0,0,0
 vec3 up = vec3(0, 1, 0);
-vec3 pCamCenter = vec3(0.f, 0.f, 0.f);
+//vec3 pCamCenter = vec3(0.f, 0.f, 0.f);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
-vec3 oCamCenter = vec3(-33.9f, 51.884197f, 0.059f);
+//vec3 oCamCenter = vec3(-33.9f, 51.884197f, 0.059f);
 vec3 oCamEye = vec3(-17.4f, 40.0f, 5.00);
 
 // Current Camera
@@ -181,7 +181,7 @@ public:
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
 		//Keys to control the camera movement
-		if ( !camUpdate)
+		if (!camUpdate)
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -871,15 +871,19 @@ public:
 		if (isOverheadView)
 		{
 			// Compute 
-			/*float newx = ((1.0f - interp) * curCamCenter.x) + (interp * pCamCenter.x);
-			float newy = ((1.0f - interp) * curCamCenter.y) + (interp * pCamCenter.y);
-			float newz = ((1.0f - interp) * curCamCenter.z) + (interp * pCamCenter.z);
-			curCamCenter = vec3(newx, newy, newz);*/
-
 			float newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
 			float newy = ((1.0f - interp) * curCamEye.y) + (interp * pCamEye.y);
 			float newz = ((1.0f - interp) * curCamEye.z) + (interp * pCamEye.z);
 			curCamEye = vec3(newx, newy, newz);
+
+			newx = ((1.0f - interp) * (curCamEye.x + ox)) + (interp * (pCamEye.x + x));
+			newy = ((1.0f - interp) * (curCamEye.y + oy)) + (interp * (pCamEye.y + y));
+			newz = ((1.0f - interp) * (curCamEye.z + oz)) + (interp * (pCamEye.z + z));
+			curCamCenter = vec3(newx, newy, newz);
+
+			camMove = vec3( ((1.0f - interp) * ox ) + (interp * x),
+				((1.0f - interp) * oy ) + (interp * y),
+				((1.0f - interp) * oz ) + (interp * z));
 		}
 		else
 		{
@@ -893,6 +897,15 @@ public:
 			float newy = ((1.0f - interp) * curCamEye.y) + (interp * oCamEye.y);
 			float newz = ((1.0f - interp) * curCamEye.z) + (interp * oCamEye.z);
 			curCamEye = vec3(newx, newy, newz);
+
+			newx = ((1.0f - interp) * (curCamEye.x + x)) + (interp * (oCamEye.x + ox));
+			newy = ((1.0f - interp) * (curCamEye.y + y)) + (interp * (oCamEye.y + oy));
+			newz = ((1.0f - interp) * (curCamEye.z + z)) + (interp * (oCamEye.z + oz));
+			curCamCenter = vec3(newx, newy, newz);
+
+			camMove = vec3(((1.0f - interp) * x) + (interp * ox),
+				((1.0f - interp) * y ) + (interp * oy),
+				((1.0f - interp) * z ) + (interp * oz));
 		}
 	}
 
@@ -955,7 +968,30 @@ public:
 		float aspect = width / (float)height;
 
 
-		
+
+		// Setup yaw and pitch of camera for lookAt()
+		if (!isOverheadView)
+		{
+			x = radius * cos(phi)*cos(theta);
+			y = radius * sin(phi);
+			z =  radius * cos(phi)*sin(theta);
+			curCamCenter = curCamEye + vec3(x, y, z);
+			camMove = vec3(x, y, z);
+		}
+		else
+		{
+			// Hard code the look direction for the over view camera
+			ox = 0.45f;
+			oy = -1.0f;
+			oz = -0.00;
+			vec3 lookDir = vec3(ox, oy, oz);
+			
+			curCamCenter = curCamEye + lookDir;
+			camMove = vec3(ox, oy, oz);
+		}
+		//oCamCenter = oCamEye; // Trying
+
+
 		// Check if the camera should be interpolated
 		static float camInterp = 0.0f;
 		if (camInterp > 1.0f && camUpdate)
@@ -981,28 +1017,7 @@ public:
 			camInterp += (0.005f);
 			interpolateCamera(camInterp);
 		}
-		
-		// Setup yaw and pitch of camera for lookAt()
-		if (!isOverheadView)
-		{
-			x = radius * cos(phi)*cos(theta);
-			y = radius * sin(phi);
-			z =  radius * cos(phi)*sin(theta);
-			curCamCenter = curCamEye + vec3(x, y, z);
-			camMove = vec3(x, y, z);
-		}
-		else
-		{
-			// Hard code the look direction for the over view camera
-			ox = 0.45f;
-			oy = -1.0f;
-			oz = -0.00;
-			vec3 lookDir = vec3(ox, oy, oz);
-			
-			curCamCenter = curCamEye + lookDir;
-			camMove = vec3(ox, oy, oz);
-		}
-		//oCamCenter = oCamEye; // Trying
+
 
 		// Create the matrix stacks
 		auto P = make_shared<MatrixStack>();
