@@ -48,6 +48,7 @@ bool isCaptureCursor = false;
 
 //----- Camera Variables
 bool isOverheadView = true; // If camera is in Overhead view or follow view, currently overhead view is broken
+bool camUpdate = false;
 // Possession Camera
 vec3 pCamEye = vec3(0, 0.5, 0); //was originally 0,0,0
 vec3 up = vec3(0, 1, 0);
@@ -180,7 +181,7 @@ public:
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
 		//Keys to control the camera movement
-		if (!isOverheadView)
+		if (!isOverheadView && !camUpdate)
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -220,7 +221,7 @@ public:
 
 			}
 		}
-		else // --- If the camera is in overhead view
+		else if (!camUpdate) // --- If the camera is in overhead view
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -268,17 +269,8 @@ public:
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
 		{
-			isOverheadView = !isOverheadView;
-			if (isOverheadView)
-			{
-				curCamCenter = oCamCenter;
-				curCamEye = oCamEye;
-			}
-			else
-			{
-				curCamCenter = pCamCenter;
-				curCamEye = pCamEye;
-			}
+			camUpdate = true;
+			
 		}
 		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
 		{
@@ -409,8 +401,8 @@ public:
 
 		GameObject currObject = *currObjectPointer;
 
-		vec3 lb = currObject.bboxCenter + vec3(currObject.min_x, currObject.min_y, currObject.min_z);
-		vec3 rt = currObject.bboxCenter + vec3(currObject.max_x, currObject.max_y, currObject.max_z);
+		vec3 lb = currObject.bboxCenter - (currObject.bboxSize / 2.0f);
+		vec3 rt = currObject.bboxCenter + (currObject.bboxSize / 2.0f);
 
 		printf("Max xyz = %f %f %f\nMin xyz = %f %f %f\n", currObject.max_x, currObject.max_y, currObject.max_z, currObject.min_x, currObject.min_y, currObject.min_z);
 
@@ -746,17 +738,8 @@ public:
 
 	void renderGroundPlane(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView)
 	{
-		vec3 camLoc;
-		//if (overheadView)
-		//{
-		//	camLoc = oCamEye; // change to use oCamEYe
-
-		//}
-		//else // Possession Cam
-		//{
-		//	camLoc = pCamEye;
-		//}
-		camLoc = curCamEye;
+		//vec3 camLoc;
+		//camLoc = curCamEye;
 
 		prog->bind();
 
@@ -764,28 +747,13 @@ public:
 		M->loadIdentity();
 		M->translate(vec3(0, -1, 0)); //move the plane down a little bit in y space 
 		M->scale(vec3(40, .1, 40)); // turn the cube into a plane
-		/*if (isOverheadView)
-		{
-			groundbox->step(deltaTime, M, P, camLoc, oCamCenter, up);
-		}
-		else
-		{
-			groundbox->step(deltaTime, M, P, camLoc, pCamCenter, up);
-		}*/
-		groundbox->step(deltaTime, M, P, camLoc, curCamCenter, up);
+
+		groundbox->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 		//add uniforms to shader
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-		/*if (isOverheadView)
-		{
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, oCamCenter, up)));
-		}
-		else
-		{
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, pCamCenter, up)));
 
-		}*/
-		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, curCamCenter, up)));
+		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 		glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
@@ -834,7 +802,7 @@ public:
 
 	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView, int offsetX, int offsetZ)
 	{
-		vec3 camLoc = curCamEye;
+		//vec3 camLoc = curCamEye;
 		//if (overheadView)
 		//{
 		//	camLoc = oCamEye; // Change to use oCampCamEye
@@ -855,15 +823,8 @@ public:
 			M->loadIdentity();
 
 			// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-			/*if (isOverheadView)
-			{
-				sceneActorGameObjs[i]->step(deltaTime, M, P, camLoc, oCamCenter, up);
-			}
-			else
-			{
-				sceneActorGameObjs[i]->step(deltaTime, M, P, camLoc, pCamCenter, up);
-			}*/
-			sceneActorGameObjs[i]->step(deltaTime, M, P, camLoc, curCamCenter, up);
+
+			sceneActorGameObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 			// bunBun->DoCollisions()
 
 
@@ -881,15 +842,8 @@ public:
 			}
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			//if (isOverheadView) // Possession Cam
-			//{
-			//	glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, oCamCenter, up)));
-			//}
-			//else // Overhead Camera
-			//{
-			//	glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, pCamCenter, up)));
-			//}
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(camLoc, curCamCenter, up)));
+
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 			
 			glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
 			sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
@@ -904,6 +858,29 @@ public:
 
 	}
 
+	void interpolateCamera(float interp)
+	{
+		// 0.0 is starting position and 1.0 is final position
+		if (isOverheadView)
+		{
+			// Check if interp is too large
+			if (interp > 1.0f)
+			{
+				interp = 1.0f;
+			}
+
+			// Compute 
+			float newx = ((1.0f - interp) * curCamCenter.x) + (interp * pCamCenter.x);
+			float newy = ((1.0f - interp) * curCamCenter.y) + (interp * pCamCenter.y);
+			float newz = ((1.0f - interp) * curCamCenter.z) + (interp * pCamCenter.z);
+			curCamCenter = vec3(newx, newy, newz);
+
+			newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
+			newy = ((1.0f - interp) * curCamEye.y) + (interp * pCamEye.y);
+			newz = ((1.0f - interp) * curCamEye.z) + (interp * pCamEye.z);
+			curCamEye = vec3(newx, newy, newz);
+		}
+	}
 
 	void render()
 	{
@@ -983,6 +960,32 @@ public:
 			camMove = vec3(x, y, z);
 		}
 		//oCamCenter = oCamEye; // Trying
+		
+		// Check if the camera should be interpolated
+		static float camInterp = 0.0f;
+		if (camInterp > 1.0f && camUpdate)
+		{
+			camInterp = 0.0f;
+			camUpdate = false;
+
+			// Toggle the currentCamera after interpolation is finished
+			isOverheadView = !isOverheadView;
+			if (isOverheadView)
+			{
+				curCamCenter = oCamCenter;
+				curCamEye = oCamEye;
+			}
+			else
+			{
+				curCamCenter = pCamCenter;
+				curCamEye = pCamEye;
+			}
+		}
+		else if (camInterp <= 1.0f && camUpdate)
+		{
+			camInterp += (0.005f);
+			interpolateCamera(camInterp);
+		}
 		
 
 		// Create the matrix stacks
