@@ -172,7 +172,8 @@ public:
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
 
-		float movespd = 20.0f * deltaTime;
+		float followMoveSpd = 20.0f * deltaTime;
+		float overheadMoveSpd = 50.0f * deltaTime;
 
 		if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
@@ -183,8 +184,8 @@ public:
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				curCamCenter = curCamCenter + (camMove * movespd);
-				curCamEye = curCamEye + (camMove * movespd);
+				curCamCenter = curCamCenter + (camMove * followMoveSpd);
+				curCamEye = curCamEye + (camMove * followMoveSpd);
 
 				if (curCamEye.y <= 0)
 				{
@@ -195,22 +196,22 @@ public:
 			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 				//Left
-				curCamCenter += cross(up, camMove) * movespd;
-				curCamEye += cross(up, camMove) * movespd;
+				curCamCenter += cross(up, camMove) * followMoveSpd;
+				curCamEye += cross(up, camMove) * followMoveSpd;
 
 			}
 			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 				//Right
-				curCamCenter -= cross(up, camMove) * movespd;
-				curCamEye -= cross(up, camMove) * movespd;
+				curCamCenter -= cross(up, camMove) * followMoveSpd;
+				curCamEye -= cross(up, camMove) * followMoveSpd;
 
 			}
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				curCamCenter = curCamCenter - (movespd * camMove);
+				curCamCenter = curCamCenter - (followMoveSpd * camMove);
 				//Backward
-				curCamEye = curCamEye - (camMove * movespd);
+				curCamEye = curCamEye - (camMove * followMoveSpd);
 
 				if (curCamEye.y <= 0)
 				{
@@ -218,13 +219,53 @@ public:
 				}
 
 			}
-			else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
+		}
+		else // --- If the camera is in overhead view
+		{
+			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				printf("pcam center is: x:%f y:%f z:%f\n", curCamCenter.x, curCamCenter.y, curCamCenter.z);
-				printf("pcam eye is: x:%f y:%f z:%f\n", curCamEye.x, curCamEye.y, curCamEye.z);
+				curCamCenter.x -= (camMove.x * overheadMoveSpd);
+				curCamCenter.z -= (camMove.z * overheadMoveSpd);
+				curCamEye.x -= (camMove.x * overheadMoveSpd);
+				curCamEye.z -= (camMove.z * overheadMoveSpd);
+
+				if (curCamEye.y <= 0)
+				{
+					curCamEye.y = 0;
+				}
+
+			}
+			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				//Left
+				curCamCenter -= cross(up, camMove) * overheadMoveSpd;
+				curCamEye -= cross(up, camMove) * overheadMoveSpd;
+
+			}
+			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				//Right
+				curCamCenter += cross(up, camMove) * overheadMoveSpd;
+				curCamEye += cross(up, camMove) * overheadMoveSpd;
+
+			}
+			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				// Backwards
+				curCamCenter.x += (camMove.x * overheadMoveSpd);
+				curCamCenter.z += (camMove.z * overheadMoveSpd);
+				curCamEye.x += (camMove.x * overheadMoveSpd);
+				curCamEye.z += (camMove.z * overheadMoveSpd);
+
+				if (curCamEye.y <= 0)
+				{
+					curCamEye.y = 0;
+				}
 
 			}
 		}
+
+		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
 		{
 			isOverheadView = !isOverheadView;
@@ -243,6 +284,12 @@ public:
 		{
 			isCaptureCursor = !isCaptureCursor;
 			printf("Cursor Capture is %d\n", isCaptureCursor);
+		}
+		else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
+		{
+			printf("curCamCenter is: x:%f y:%f z:%f\n", curCamCenter.x, curCamCenter.y, curCamCenter.z);
+			printf("curCamEye eye is: x:%f y:%f z:%f\n", curCamEye.x, curCamEye.y, curCamEye.z);
+
 		}
 	}
 
@@ -294,7 +341,7 @@ public:
 				bool isClicked = RayTraceCamera(ray_wor, sceneActorGameObjs[i]);
 
 				if (isClicked) {
-					printf("Hit Object: %s", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
 				}
 
 			}
@@ -362,8 +409,10 @@ public:
 
 		GameObject currObject = *currObjectPointer;
 
-		vec3 lb = vec3(currObject.min_x, currObject.min_y, currObject.min_z);
-		vec3 rt = vec3(currObject.max_x, currObject.max_y, currObject.max_z);
+		vec3 lb = currObject.bboxCenter + vec3(currObject.min_x, currObject.min_y, currObject.min_z);
+		vec3 rt = currObject.bboxCenter + vec3(currObject.max_x, currObject.max_y, currObject.max_z);
+
+		printf("Max xyz = %f %f %f\nMin xyz = %f %f %f\n", currObject.max_x, currObject.max_y, currObject.max_z, currObject.min_x, currObject.min_y, currObject.min_z);
 
 		float t1 = (lb.x - curCamCenter.x)*dirfrac.x;
 		float t2 = (rt.x - curCamCenter.x)*dirfrac.x;
@@ -577,6 +626,12 @@ public:
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(PlayerBun);
+
+		// Setup temp player bunny
+		position = vec3(30.0f, 0.0f, 30.0f);
+		orientation = vec3(0.0f, 0.0f, 1.0f);
+		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("NPC", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		sceneActorGameObjs.push_back(NPCBun);
 
 
 	}
@@ -915,6 +970,16 @@ public:
 			y = radius * sin(phi);
 			z = radius * cos(phi)*sin(theta);
 			curCamCenter = curCamEye + vec3(x, y, z);
+			camMove = vec3(x, y, z);
+		}
+		else
+		{
+			x = radius * cos(phi)*sin(theta);
+			y = radius * sin(phi);
+			z = radius * cos(phi)*cos(theta);
+			
+			//curCamCenter = curCamEye + vec3(x, y, z);
+			//curCamCenter = vec3(x, y, z);
 			camMove = vec3(x, y, z);
 		}
 		//oCamCenter = oCamEye; // Trying

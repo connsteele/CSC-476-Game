@@ -55,6 +55,7 @@ void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr
 	bboxTransform = glm::translate(glm::mat4(1), bboxCenter) * glm::scale(glm::mat4(1), bboxSize);
 	
 	
+
 }
 
 // Check for exiting ground plane, if so flip the orientation of the bunny
