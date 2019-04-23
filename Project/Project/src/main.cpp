@@ -29,6 +29,9 @@ using namespace glm;
 //---
 int p1Collisions = 0;
 
+// -- Variables for possessed actor
+shared_ptr<GameObject> possessedActor = NULL;
+
 //--- Variables for players bbox 
 GLuint p1_vbo_vertices;
 GLuint p1_ibo_elements;
@@ -271,6 +274,10 @@ public:
 		{
 			camUpdate = true;
 			// isOverheadView = !isOverheadView;
+			/*if (!isOverheadView)
+			{
+				isOverheadView = true;
+			}*/
 			
 		}
 		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
@@ -336,6 +343,10 @@ public:
 
 				if (isClicked) {
 					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+					
+					sceneActorGameObjs[i]->isPosessed = true;
+					possessedActor = sceneActorGameObjs[i];
+
 				}
 
 			}
@@ -821,36 +832,41 @@ public:
 
 		// 
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
-			M->pushMatrix();
-			M->loadIdentity();
-
-			// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-
-			sceneActorGameObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
-			// bunBun->DoCollisions()
 
 
-			//add uniforms to shader
-			// Set the materials of the bunny depending on if the player has hit it or not
-			if (sceneActorGameObjs[i]->hitByPlayer)
-			{
-				SetMaterial(2);
-				//M->rotate(180.0f, vec3(0, 1, 0));
-				// glUniform1f(prog->getUniform("hit"), 1); //old method
+			if(sceneActorGameObjs[i]->isRender == true){
+				M->pushMatrix();
+				M->loadIdentity();
+
+				// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
+
+				sceneActorGameObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+				// bunBun->DoCollisions()
+
+
+				//add uniforms to shader
+				// Set the materials of the bunny depending on if the player has hit it or not
+				if (sceneActorGameObjs[i]->hitByPlayer)
+				{
+					SetMaterial(2);
+					//M->rotate(180.0f, vec3(0, 1, 0));
+					// glUniform1f(prog->getUniform("hit"), 1); //old method
+				}
+				else
+				{
+					SetMaterial(1);
+				}
+				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+
+				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+				
+				glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
+				sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
+
+				M->popMatrix();
 			}
-			else
-			{
-				SetMaterial(1);
-			}
-			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 			
-			glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
-			sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
-
-			M->popMatrix();
 		}
 
 
@@ -868,8 +884,23 @@ public:
 			interp = 1.0f;
 		}
 		// 0.0 is starting position and 1.0 is final position
-		if (isOverheadView)
+		if (isOverheadView) // Interpolate from the overhead view to the possessed game object
 		{
+			for (int i = 0; i < sceneActorGameObjs.size(); i++)
+			{
+				if ((sceneActorGameObjs[i])->isPosessed == true)
+				{
+					printf("Using a possessed object's location");
+					GameObject posActor = *sceneActorGameObjs[i];
+					pCamEye = posActor.position; // use the position of the game object with an offset
+					if (interp > 0.9f) // Turn of the rendering of the possessed object
+					{
+						sceneActorGameObjs[i]->isRender = false;
+					}
+					break;
+				}
+			}
+
 			// Compute 
 			float newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
 			float newy = ((1.0f - interp) * curCamEye.y) + (interp * pCamEye.y);
@@ -887,13 +918,8 @@ public:
 		}
 		else
 		{
-			// Compute 
-			/*float newx = ((1.0f - interp) * curCamCenter.x) + (interp * oCamCenter.x);
-			float newy = ((1.0f - interp) * curCamCenter.y) + (interp * oCamCenter.y);
-			float newz = ((1.0f - interp) * curCamCenter.z) + (interp * oCamCenter.z);
-			curCamCenter = vec3(newx, newy, newz);*/
-
-			float newx = ((1.0f - interp) * curCamEye.x) + (interp * oCamEye.x);
+			// Compute an interpolated camera
+			/*float newx = ((1.0f - interp) * curCamEye.x) + (interp * oCamEye.x);
 			float newy = ((1.0f - interp) * curCamEye.y) + (interp * oCamEye.y);
 			float newz = ((1.0f - interp) * curCamEye.z) + (interp * oCamEye.z);
 			curCamEye = vec3(newx, newy, newz);
@@ -905,8 +931,16 @@ public:
 
 			camMove = vec3(((1.0f - interp) * x) + (interp * ox),
 				((1.0f - interp) * y ) + (interp * oy),
-				((1.0f - interp) * z ) + (interp * oz));
+				((1.0f - interp) * z ) + (interp * oz));*/
+
+			// Immediately swap camera position
+			
 		}
+	}
+
+	void updateGameLogic()
+	{
+		printf("Update Game Logic\n");
 	}
 
 	void render()
@@ -970,7 +1004,7 @@ public:
 
 
 		// Setup yaw and pitch of camera for lookAt()
-		if (!isOverheadView)
+		if (!isOverheadView) // Possession
 		{
 			x = radius * cos(phi)*cos(theta);
 			y = radius * sin(phi);
@@ -979,7 +1013,7 @@ public:
 			curCamCenter = curCamEye + vec3(x, y, z);
 			camMove = vec3(x, y, z);
 		}
-		else
+		else // Overhead
 		{
 			// Hard code the look direction for the over view camera
 			ox = 0.45f;
@@ -993,6 +1027,9 @@ public:
 		//oCamCenter = oCamEye; // Trying
 
 
+		//for(int i = 0; i < sceneActorGameObjs.size(); )
+
+
 		// Check if the camera should be interpolated
 		static float camInterp = 0.0f;
 		if (camInterp > 1.0f && camUpdate)
@@ -1000,25 +1037,27 @@ public:
 			camInterp = 0.0f;
 			camUpdate = false;
 
-			// Toggle the currentCamera after interpolation is finished
-			isOverheadView = !isOverheadView;
-			/*if (isOverheadView)
-			{
-				curCamCenter = oCamCenter;
-				curCamEye = oCamEye;
-			}
-			else
-			{
-				curCamCenter = pCamCenter;
-				curCamEye = pCamEye;
-			}*/
+			
+			isOverheadView = false; // Toggle the currentCamera after interpolation is finished
 		}
-		else if (camInterp <= 1.0f && camUpdate)
+		else if (camInterp <= 1.0f && camUpdate && isOverheadView) // interpolate from the overhead camera to the possesd gameobjects view
 		{
 			camInterp += 0.01f;
 			interpolateCamera(camInterp);
 		}
+		else if (camUpdate && !isOverheadView) // Snap from the players camera to the ovehead view
+		{
+			curCamEye = oCamEye;
 
+			float onewx = oCamEye.x + ox;
+			float onewy = oCamEye.y + oy;
+			float onewz = oCamEye.z + oz;
+			curCamCenter = vec3(onewx, onewy, onewz);
+		}
+		/*if (!camUpdate && !isOverheadView)
+		{
+			isOverheadView = true;
+		}*/
 
 		// Create the matrix stacks
 		auto P = make_shared<MatrixStack>();
@@ -1087,6 +1126,9 @@ int main(int argc, char **argv)
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
 	{
+		// Update the games logic
+		application->updateGameLogic();
+
 		// Render scene.
 		application->render();
 

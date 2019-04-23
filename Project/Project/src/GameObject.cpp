@@ -21,6 +21,10 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->visibleBbox = visibleBbox;
 
 	elapsedTime = 0.0f;
+
+	//Set global bools
+	isPosessed = false;
+	isRender = true;
 }
 
 void GameObject::DrawGameObj()
