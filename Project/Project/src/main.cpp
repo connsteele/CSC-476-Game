@@ -293,7 +293,15 @@ public:
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
 		{
-			camUpdate = true;
+			if (isOverheadView)
+			{
+				camUpdate = true;
+			}
+			else
+			{
+				isOverheadView = true;
+			}
+			
 			// isOverheadView = !isOverheadView;
 			/*if (!isOverheadView)
 			{
@@ -315,6 +323,7 @@ public:
 			printf("curCamCenter is: x:%f y:%f z:%f\n", curCamCenter.x, curCamCenter.y, curCamCenter.z);
 			printf("curCamEye eye is: x:%f y:%f z:%f\n", curCamEye.x, curCamEye.y, curCamEye.z);
 			printf("cur rot XYZ is: x:%f y:%f z:%f\n", x, y, z);
+			printf("cur isOverhead is :%d\n", isOverheadView);
 
 		}
 	}
@@ -1103,12 +1112,13 @@ public:
 			
 			isOverheadView = false; // Toggle the currentCamera after interpolation is finished
 		}
-		else if (camInterp <= 1.0f && camUpdate && isOverheadView) // interpolate from the overhead camera to the possesd gameobjects view
+
+		if (camInterp <= 1.0f && camUpdate) // interpolate from the overhead camera to the possesd gameobjects view
 		{
 			camInterp += 0.01f;
 			interpolateCamera(camInterp);
 		}
-		else if (camUpdate && !isOverheadView) // Snap from the players camera to the ovehead view
+		else if (isOverheadView) // Snap from the players camera to the ovehead view
 		{
 			curCamEye = oCamEye;
 
@@ -1123,6 +1133,15 @@ public:
 				possessedActor = NULL; // Remove the possessed actor
 			}
 		}
+		//else if (!isOverheadView)
+		//{
+		//	x = radius * cos(phi)*cos(theta);
+		//	y = radius * sin(phi);
+		//	z = radius * cos(phi)*sin(theta);
+		//	//printf("rots phi: %d, theta: %d \n", phi, theta);
+		//	curCamCenter = curCamEye + vec3(x, y, z);
+		//	camMove = vec3(x, y, z);
+		//}
 		/*if (!camUpdate && !isOverheadView)
 		{
 			isOverheadView = true;
