@@ -19,6 +19,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->velocity = vel;
 	this->orientation = orient;
 	this->visibleBbox = visibleBbox;
+	this->beenShot = false;
 
 	elapsedTime = 0.0f;
 

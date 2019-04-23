@@ -26,7 +26,7 @@ public:
 	glm::vec3 bboxSize;
 	glm::vec3 bboxCenter;
 	glm::mat4 bboxTransform;
-	bool hitByPlayer, visibleBbox, isPosessed, isRender;
+	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot;
 	int team; // 0 is neutral, 1 for robots(player team), 2 for aliens
 
 	GLfloat min_x, max_x,

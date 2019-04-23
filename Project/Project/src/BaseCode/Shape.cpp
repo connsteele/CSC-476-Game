@@ -26,7 +26,7 @@ void Shape::loadMesh(const string &meshName)
 	}
 	else if (shapes.size())
 	{
-		posBuf = shapes[0].mesh.positions;
+		posBuf = shapes[0].mesh.positions; // Will only get the first piece of the model out pretty sure (Connor S)
 		norBuf = shapes[0].mesh.normals;
 		texBuf = shapes[0].mesh.texcoords;
 		eleBuf = shapes[0].mesh.indices;
@@ -164,6 +164,7 @@ void Shape::draw(const shared_ptr<Program> prog) const
 		glVertexAttribPointer(h_nor, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	}
 
+	// Connor Note, If the texture buffer ID exists bind the texcoords
 	if (texBufID != 0)
 	{
 		// Bind texcoords buffer

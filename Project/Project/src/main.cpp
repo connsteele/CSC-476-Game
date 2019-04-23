@@ -38,8 +38,10 @@ GLuint p1_ibo_elements;
 vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
-//--- Vector of all actor game objects
+//--- Vector of all actor game objects plus arrays of player units and enemy units
 vector<shared_ptr<GameObject> > sceneActorGameObjs;
+vector<shared_ptr<GameObject> > playerUnits;
+vector<shared_ptr<GameObject> > enemyUnits;
 
 //Camera Timing
 float deltaTime = 0.0f, lastTime = glfwGetTime();
@@ -140,7 +142,7 @@ public:
 	std::shared_ptr<Program> texProg;
 
 	// Access OBJ files
-	shared_ptr<Shape> bunnyShape;
+	shared_ptr<Shape> bunnyShape, maRobotShape;
 	shared_ptr<Shape> cube;
 	shared_ptr<Shape> sphere;
 
@@ -303,6 +305,10 @@ public:
 		{
 			isCaptureCursor = !isCaptureCursor;
 			printf("Cursor Capture is %d\n", isCaptureCursor);
+			int width, height;
+			glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+			glfwSetCursorPos(window, width / 2, height / 2);
+			
 		}
 		else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
 		{
@@ -350,7 +356,7 @@ public:
 			vec4 ray_wor_temp = inverse(ourView) * ray_eye;
 			vec3 ray_wor = vec3(ray_wor_temp.x, ray_wor_temp.y, ray_wor_temp.z);
 			ray_wor = normalize(ray_wor); //Ray direction vector normalized
-			printf("ray in world coordinates: %f, %f, %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
+			//printf("ray in world coordinates: %f, %f, %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
 
 
 			for (int i = 0; i < sceneActorGameObjs.size(); i++) {
@@ -360,12 +366,16 @@ public:
 
 				bool isClicked = RayTraceCamera(ray_wor, sceneActorGameObjs[i]);
 
-				if (isClicked) {
-					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+				if (isClicked && possessedActor == NULL) {
 					
 					sceneActorGameObjs[i]->isPosessed = true;
-					possessedActor = sceneActorGameObjs[i];
+					possessedActor = sceneActorGameObjs[i]; // tell the interpolate function that it should possess the clicked object
 
+				}
+				else if(isClicked && possessedActor != NULL){
+					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+					
+					sceneActorGameObjs[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
 				}
 
 			}
@@ -530,6 +540,7 @@ public:
 		prog->addUniform("V");
 		prog->addAttribute("vertPos");
 		prog->addAttribute("vertNor");
+		prog->addAttribute("vertTex");
 		prog->addUniform("lightSource"); //lighting uniform
 		prog->addUniform("hit"); //Uniform for determining color based on hit or not
 
@@ -617,9 +628,16 @@ public:
 
 		// Initialize the bunny obj mesh VBOs etc
 		bunnyShape = make_shared<Shape>();
-		bunnyShape->loadMesh(resourceDirectory + "/bunny.obj");
+		bunnyShape->loadMesh(resourceDirectory + "/bman.obj");
 		bunnyShape->resize();
 		bunnyShape->init();
+		// bman works but throws hella verteTex things
+
+		// Initialize the bunny obj mesh VBOs etc
+		maRobotShape = make_shared<Shape>();
+		maRobotShape->loadMesh(resourceDirectory + "/ma.obj"); // has vertTexure issues
+		maRobotShape->resize();
+		maRobotShape->init();
 
 		// Initialize the cube OBJ model
 		cube = make_shared<Shape>();
@@ -639,25 +657,39 @@ public:
 
 
 		// Setup new Ground plane
-		glm::vec3 position = glm::vec3(0.0f);
+		glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
 		float velocity = 0.0f;
 		glm::vec3 orientation = glm::vec3(0.0f, 0.0f, 0.0f);
 		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
 
 
 		// Setup temp player bunny
-		position = vec3(0.0f, 0.0f, 0.0f);
+		position = vec3(0.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(PlayerBun);
+		playerUnits.push_back(PlayerBun);
 
-		// Setup temp player bunny
-		position = vec3(30.0f, 0.0f, 30.0f);
+		// Setup the second robot
+		position = vec3(20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("NPC", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(NPCBun);
+		playerUnits.push_back(NPCBun);
 
-
+		// Setup the third robot
+		position = vec3(-20.0f, 0.0f, -25.0f);
+		orientation = vec3(0.0f, 0.0f, 1.0f);
+		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		sceneActorGameObjs.push_back(robot3);
+		playerUnits.push_back(robot3);
+		
+		// Setup the forth robot
+		position = vec3(30.0f, 0.0f, -25.0f);
+		orientation = vec3(0.0f, 0.0f, 1.0f);
+		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		sceneActorGameObjs.push_back(robot4);
+		playerUnits.push_back(robot4);
 	}
 
 	/**** geometry set up for a quad *****/
@@ -858,14 +890,14 @@ public:
 				M->loadIdentity();
 
 				// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-
+				
 				sceneActorGameObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 				// bunBun->DoCollisions()
 
 
 				//add uniforms to shader
 				// Set the materials of the bunny depending on if the player has hit it or not
-				if (sceneActorGameObjs[i]->hitByPlayer)
+				if (sceneActorGameObjs[i]->beenShot)
 				{
 					SetMaterial(2);
 					//M->rotate(180.0f, vec3(0, 1, 0));
@@ -967,7 +999,7 @@ public:
 
 	void updateGameLogic()
 	{
-		printf("Update Game Logic\n");
+		// printf("Update Game Logic\n");
 	}
 
 	void render()
