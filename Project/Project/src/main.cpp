@@ -368,23 +368,23 @@ public:
 			//printf("ray in world coordinates: %f, %f, %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
 
 
-			for (int i = 0; i < sceneActorGameObjs.size(); i++) {
+			for (int i = 0; i < playerUnits.size(); i++) {
 
 
-				GameObject currObject = *sceneActorGameObjs[i];
+				GameObject currObject = *playerUnits[i];
 
-				bool isClicked = RayTraceCamera(ray_wor, sceneActorGameObjs[i]);
+				bool isClicked = RayTraceCamera(ray_wor, playerUnits[i]);
 
 				if (isClicked && possessedActor == NULL) {
 					
-					sceneActorGameObjs[i]->isPosessed = true;
-					possessedActor = sceneActorGameObjs[i]; // tell the interpolate function that it should possess the clicked object
+					playerUnits[i]->isPosessed = true;
+					possessedActor = playerUnits[i]; // tell the interpolate function that it should possess the clicked object
 
 				}
 				else if(isClicked && possessedActor != NULL){
 					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
 					
-					sceneActorGameObjs[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+					playerUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
 				}
 
 			}
@@ -454,8 +454,6 @@ public:
 
 		vec3 lb = currObject.bboxCenter - (currObject.bboxSize / 2.0f);
 		vec3 rt = currObject.bboxCenter + (currObject.bboxSize / 2.0f);
-
-		printf("Max xyz = %f %f %f\nMin xyz = %f %f %f\n", currObject.max_x, currObject.max_y, currObject.max_z, currObject.min_x, currObject.min_y, currObject.min_z);
 
 		float t1 = (lb.x - curCamCenter.x)*dirfrac.x;
 		float t2 = (rt.x - curCamCenter.x)*dirfrac.x;
@@ -699,6 +697,32 @@ public:
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(robot4);
 		playerUnits.push_back(robot4);
+
+		// ---TEMPORARY CUBE TERRAIN -- 
+		/*position = glm::vec3(0.0f, 0.0f, 0.0f);
+		velocity = 0.0f;
+		orientation = glm::vec3(0.0f, 0.0f, 0.0f);
+		shared_ptr<GameObject> terrainOne = make_shared<GameObject>("terrain1", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+		sceneActorGameObjs.push_back(terrainOne);
+
+		position = glm::vec3(2.5f, 0.0f, 0.0f);
+		velocity = 0.0f;
+		orientation = glm::vec3(0.0f, 0.0f, 0.0f);
+		shared_ptr<GameObject> terrainTwo = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+		sceneActorGameObjs.push_back(terrainTwo);*/
+
+		for (int i = 0; i < 30; i++) {
+			float randX = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
+			float randZ = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
+
+
+			position = glm::vec3(randX, 0.0f, randZ);
+			velocity = 0.0f;
+			orientation = glm::vec3(0.0f, 0.0f, 0.0f);
+			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+			sceneActorGameObjs.push_back(terrainTemp);
+
+		}
 	}
 
 	/**** geometry set up for a quad *****/
