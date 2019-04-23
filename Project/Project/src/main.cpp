@@ -886,20 +886,28 @@ public:
 		// 0.0 is starting position and 1.0 is final position
 		if (isOverheadView) // Interpolate from the overhead view to the possessed game object
 		{
-			for (int i = 0; i < sceneActorGameObjs.size(); i++)
+			if (possessedActor != NULL)
 			{
-				if ((sceneActorGameObjs[i])->isPosessed == true)
+				pCamEye = possessedActor->position;
+				if (interp > 0.55f) // Turn of the rendering of the possessed object
 				{
-					printf("Using a possessed object's location");
-					GameObject posActor = *sceneActorGameObjs[i];
-					pCamEye = posActor.position; // use the position of the game object with an offset
-					if (interp > 0.9f) // Turn of the rendering of the possessed object
-					{
-						sceneActorGameObjs[i]->isRender = false;
-					}
-					break;
+					possessedActor->isRender = false;
 				}
 			}
+			//for (int i = 0; i < sceneActorGameObjs.size(); i++)
+			//{
+			//	if ((sceneActorGameObjs[i])->isPosessed == true)
+			//	{
+			//		printf("Using a possessed object's location");
+			//		GameObject posActor = *sceneActorGameObjs[i];
+			//		pCamEye = posActor.position; // use the position of the game object with an offset
+			//		if (interp > 0.9f) // Turn of the rendering of the possessed object
+			//		{
+			//			sceneActorGameObjs[i]->isRender = false;
+			//		}
+			//		break;
+			//	}
+			//}
 
 			// Compute 
 			float newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
@@ -1053,6 +1061,11 @@ public:
 			float onewy = oCamEye.y + oy;
 			float onewz = oCamEye.z + oz;
 			curCamCenter = vec3(onewx, onewy, onewz);
+
+			if (possessedActor->isRender == false) // Turn on rendering for the possessed actor when going back
+			{
+				possessedActor->isRender = true;
+			}
 		}
 		/*if (!camUpdate && !isOverheadView)
 		{
