@@ -184,7 +184,7 @@ public:
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
 		//Keys to control the camera movement
-		if (!camUpdate)
+		if (!camUpdate && !isOverheadView && (possessedActor == NULL))
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -222,6 +222,25 @@ public:
 					curCamEye.y = 0;
 				}
 
+			}
+		}
+		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
+		{
+			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				possessedActor->position += (camMove * followMoveSpd);
+			}
+			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				possessedActor->position -= (camMove * followMoveSpd);
+			}
+			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				possessedActor->position += cross(up, camMove) * followMoveSpd;
+			}
+			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				possessedActor->position -= cross(up, camMove) * followMoveSpd;
 			}
 		}
 		//else if (!camUpdate) // --- If the camera is in overhead view
@@ -623,7 +642,7 @@ public:
 		glm::vec3 position = glm::vec3(0.0f);
 		float velocity = 0.0f;
 		glm::vec3 orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, velocity, orientation, true, 0);
+		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
 
 
 		// Setup temp player bunny
@@ -1014,6 +1033,10 @@ public:
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView) // Possession
 		{
+			if (possessedActor)
+			{
+				curCamEye = possessedActor->position;
+			}
 			x = radius * cos(phi)*cos(theta);
 			y = radius * sin(phi);
 			z =  radius * cos(phi)*sin(theta);
@@ -1062,9 +1085,10 @@ public:
 			float onewz = oCamEye.z + oz;
 			curCamCenter = vec3(onewx, onewy, onewz);
 
-			if (possessedActor->isRender == false) // Turn on rendering for the possessed actor when going back
+			if ((possessedActor != NULL) && (possessedActor->isRender == false)) // Turn on rendering for the possessed actor when going back
 			{
 				possessedActor->isRender = true;
+				possessedActor = NULL; // Remove the possessed actor
 			}
 		}
 		/*if (!camUpdate && !isOverheadView)
