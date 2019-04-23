@@ -178,7 +178,7 @@ public:
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
 
-		float followMoveSpd = 20.0f * deltaTime;
+		float followMoveSpd = 40.0f * deltaTime;
 		float overheadMoveSpd = 50.0f * deltaTime;
 
 		if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
@@ -375,20 +375,34 @@ public:
 
 				bool isClicked = RayTraceCamera(ray_wor, playerUnits[i]);
 
-				if (isClicked && possessedActor == NULL) {
+				if (isClicked && possessedActor == NULL && isOverheadView) {
 					
 					playerUnits[i]->isPosessed = true;
 					possessedActor = playerUnits[i]; // tell the interpolate function that it should possess the clicked object
 
 				}
-				else if(isClicked && possessedActor != NULL){
-					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
-					
-					playerUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
-				}
+				// }
 
 			}
 
+			for(int i = 0; i < enemyUnits.size(); i++){
+
+				GameObject currObject = *enemyUnits[i];
+
+				bool isClicked = RayTraceCamera(ray_wor, enemyUnits[i]);
+
+				if(isClicked && possessedActor != NULL && !isOverheadView){
+					
+					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+					enemyUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+				}
+			}
+
+			// Go back to the overhead view after shooting
+			if (!isOverheadView)
+			{
+				isOverheadView = true;
+			}
 		}
 
 		if (action == GLFW_RELEASE)
@@ -642,7 +656,7 @@ public:
 
 		// Initialize the bunny obj mesh VBOs etc
 		maRobotShape = make_shared<Shape>();
-		maRobotShape->loadMesh(resourceDirectory + "/ma.obj"); // has vertTexure issues
+		maRobotShape->loadMesh(resourceDirectory + "/bunny.obj"); // has vertTexure issues
 		maRobotShape->resize();
 		maRobotShape->init();
 
@@ -698,6 +712,35 @@ public:
 		sceneActorGameObjs.push_back(robot4);
 		playerUnits.push_back(robot4);
 
+		// Setup the first alien
+		position = vec3(20.0f, 0.0f, 25.0f);
+		orientation = vec3(0.0f, 0.0f, -1.0f);
+		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		sceneActorGameObjs.push_back(alien0);
+		enemyUnits.push_back(alien0);
+		
+
+		// Setup the 2nd alien
+		position = vec3(10.0f, 0.0f, 20.0f);
+		orientation = vec3(0.0f, 0.0f, -1.0f);
+		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		sceneActorGameObjs.push_back(alien1);
+		enemyUnits.push_back(alien1);
+
+		// Setup the 3rd alien
+		position = vec3(10.0f, 0.0f, 15.0f);
+		orientation = vec3(0.0f, 0.0f, -1.0f);
+		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		sceneActorGameObjs.push_back(alien2);
+		enemyUnits.push_back(alien2);
+
+		// Setup the 4th alien
+		position = vec3(15.0f, 0.0f, 10.0f);
+		orientation = vec3(0.0f, 0.0f, -1.0f);
+		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		sceneActorGameObjs.push_back(alien3);
+		enemyUnits.push_back(alien3);
+
 		// ---TEMPORARY CUBE TERRAIN -- 
 		/*position = glm::vec3(0.0f, 0.0f, 0.0f);
 		velocity = 0.0f;
@@ -711,9 +754,9 @@ public:
 		shared_ptr<GameObject> terrainTwo = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
 		sceneActorGameObjs.push_back(terrainTwo);*/
 
-		for (int i = 0; i < 30; i++) {
-			float randX = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
-			float randZ = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
+		for (int i = 0; i < 20; i++) {
+			float randX = -40.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (40.0f - -40.0f)));
+			float randZ = -60.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (60.0f - -60.0f)));
 
 
 			position = glm::vec3(randX, 0.0f, randZ);
@@ -842,8 +885,8 @@ public:
 
 		M->pushMatrix();
 		M->loadIdentity();
-		M->translate(vec3(0, -1, 0)); //move the plane down a little bit in y space 
-		M->scale(vec3(40, .1, 40)); // turn the cube into a plane
+		M->translate(vec3(0.f, -1.f, 0.f)); //move the plane down a little bit in y space 
+		M->scale(vec3(40.f, .1f, 120.f)); // turn the cube into a plane
 
 		groundbox->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 		//add uniforms to shader
@@ -1033,6 +1076,20 @@ public:
 	void updateGameLogic()
 	{
 		// printf("Update Game Logic\n");
+		int counter = 0;
+		for (int i = 0; i < enemyUnits.size(); i++)
+		{
+			if (enemyUnits[i]->beenShot)
+			{
+				counter++;
+			}
+		}
+		if (counter == enemyUnits.size())
+		{
+			
+			printf("THE ROBOTS HAVE WON!\n");
+
+		}
 	}
 
 	void render()
