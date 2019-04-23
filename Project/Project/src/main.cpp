@@ -307,7 +307,7 @@ public:
 			printf("Cursor Capture is %d\n", isCaptureCursor);
 			int width, height;
 			glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
-			glfwSetCursorPos(window, width / 2, height / 2);
+			glfwSetCursorPos(window, width / 2.0f, height / 2.0f);
 			
 		}
 		else if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS)
