@@ -245,50 +245,50 @@ public:
 				possessedActor->position -= cross(up, camMove) * followMoveSpd;
 			}
 		}
-		//else if (!camUpdate) // --- If the camera is in overhead view
-		//{
-		//	if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
-		//	{
-		//		curCamCenter.x -= (camMove.x * overheadMoveSpd);
-		//		curCamCenter.z -= (camMove.z * overheadMoveSpd);
-		//		curCamEye.x -= (camMove.x * overheadMoveSpd);
-		//		curCamEye.z -= (camMove.z * overheadMoveSpd);
+		else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
+		{
+			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				//curCamCenter.x -= (camMove.x * overheadMoveSpd);
+				//curCamCenter.z -= (camMove.z * overheadMoveSpd);
+				oCamEye.x += (camMove.x * overheadMoveSpd);
+				oCamEye.z += (camMove.z * overheadMoveSpd);
 
-		//		if (curCamEye.y <= 0)
-		//		{
-		//			curCamEye.y = 0;
-		//		}
+				/*if (oCamEye.y <= 0)
+				{
+					oCamEye.y = 0;
+				}*/
 
-		//	}
-		//	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
-		//	{
-		//		//Left
-		//		curCamCenter -= cross(up, camMove) * overheadMoveSpd;
-		//		curCamEye -= cross(up, camMove) * overheadMoveSpd;
+			}
+			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				//Left
+				//curCamCenter -= cross(up, camMove) * overheadMoveSpd;
+				oCamEye += cross(up, camMove) * overheadMoveSpd;
 
-		//	}
-		//	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
-		//	{
-		//		//Right
-		//		curCamCenter += cross(up, camMove) * overheadMoveSpd;
-		//		curCamEye += cross(up, camMove) * overheadMoveSpd;
+			}
+			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				//Right
+				//curCamCenter += cross(up, camMove) * overheadMoveSpd;
+				oCamEye -= cross(up, camMove) * overheadMoveSpd;
 
-		//	}
-		//	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
-		//	{
-		//		// Backwards
-		//		curCamCenter.x += (camMove.x * overheadMoveSpd);
-		//		curCamCenter.z += (camMove.z * overheadMoveSpd);
-		//		curCamEye.x += (camMove.x * overheadMoveSpd);
-		//		curCamEye.z += (camMove.z * overheadMoveSpd);
+			}
+			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			{
+				// Backwards
+				//curCamCenter.x += (camMove.x * overheadMoveSpd);
+				//curCamCenter.z += (camMove.z * overheadMoveSpd);
+				oCamEye.x -= (camMove.x * overheadMoveSpd);
+				oCamEye.z -= (camMove.z * overheadMoveSpd);
 
-		//		if (curCamEye.y <= 0)
-		//		{
-		//			curCamEye.y = 0;
-		//		}
-
-		//	}
-		//}
+				/*if (curCamEye.y <= 0)
+				{
+					curCamEye.y = 0;
+				}
+*/
+			}
+		}
 
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
