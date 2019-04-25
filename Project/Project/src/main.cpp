@@ -40,8 +40,8 @@ mat4 p1_bboxTransform;
 
 //--- Vector of all actor game objects plus arrays of player units and enemy units
 vector<shared_ptr<GameObject> > sceneActorGameObjs;
-vector<shared_ptr<GameObject> > playerUnits;
-vector<shared_ptr<GameObject> > enemyUnits;
+vector<shared_ptr<GameObject> > robotUnits;
+vector<shared_ptr<GameObject> > alienUnits;
 
 //Camera Timing
 float deltaTime = 0.0f, lastTime = glfwGetTime();
@@ -134,6 +134,9 @@ public:
 
 	//More Camera Info
 	vec3 camMove;
+
+	//Assign who's turn it is. TODO: Make random at some point(?) for now start at 1
+	int whoseTurn = 1;
 
 	WindowManager * windowManager = nullptr;
 
@@ -368,40 +371,27 @@ public:
 			//printf("ray in world coordinates: %f, %f, %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
 
 
-			for (int i = 0; i < playerUnits.size(); i++) {
-
-
-				GameObject currObject = *playerUnits[i];
-
-				bool isClicked = RayTraceCamera(ray_wor, playerUnits[i]);
-
-				if (isClicked && possessedActor == NULL && isOverheadView) {
-					
-					playerUnits[i]->isPosessed = true;
-					possessedActor = playerUnits[i]; // tell the interpolate function that it should possess the clicked object
-
-				}
-				// }
-
-			}
-
-			for(int i = 0; i < enemyUnits.size(); i++){
-
-				GameObject currObject = *enemyUnits[i];
-
-				bool isClicked = RayTraceCamera(ray_wor, enemyUnits[i]);
-
-				if(isClicked && possessedActor != NULL && !isOverheadView){
-					
-					printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
-					enemyUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
-				}
+			if(whoseTurn == 1) {
+                //Perform team 1 ray trace operations
+                TeamOneRayTrace(ray_wor);
+            }
+			else{
+			    TeamTwoRayTrace(ray_wor);
 			}
 
 			// Go back to the overhead view after shooting
 			if (!isOverheadView)
 			{
 				isOverheadView = true;
+
+
+				//Switch whose turn it is
+				if(whoseTurn == 1){
+				    whoseTurn = 2;
+				}
+				else{
+				    whoseTurn = 1;
+				}
 			}
 		}
 
@@ -460,6 +450,72 @@ public:
 	}
 
 
+	void TeamOneRayTrace(vec3 ray_wor){
+        for (int i = 0; i < robotUnits.size(); i++) {
+
+
+            GameObject currObject = *robotUnits[i];
+
+            bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
+
+            if (isClicked && possessedActor == NULL && isOverheadView) {
+
+                robotUnits[i]->isPosessed = true;
+                possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
+
+            }
+            // }
+
+        }
+
+        for(int i = 0; i < alienUnits.size(); i++){
+
+            GameObject currObject = *alienUnits[i];
+
+            bool isClicked = RayTraceCamera(ray_wor, alienUnits[i]);
+
+            if(isClicked && possessedActor != NULL && !isOverheadView){
+
+                printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+                alienUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+            }
+        }
+	}
+
+	void TeamTwoRayTrace(vec3 ray_wor){
+        for (int i = 0; i < alienUnits.size(); i++) {
+
+
+            GameObject currObject = *alienUnits[i];
+
+            bool isClicked = RayTraceCamera(ray_wor, alienUnits[i]);
+
+            if (isClicked && possessedActor == NULL && isOverheadView) {
+
+                alienUnits[i]->isPosessed = true;
+                possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
+
+            }
+            // }
+
+        }
+
+        for(int i = 0; i < robotUnits.size(); i++){
+
+            GameObject currObject = *robotUnits[i];
+
+            bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
+
+            if(isClicked && possessedActor != NULL && !isOverheadView){
+
+                printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
+                robotUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+            }
+        }
+	}
+
+
+
 	bool RayTraceCamera(vec3 rayDir, shared_ptr<GameObject> currObjectPointer)
 	{
 		vec3 dirfrac = vec3(1.0f / rayDir.x, 1.0f / rayDir.y, 1.0f / rayDir.z);
@@ -476,8 +532,8 @@ public:
 		float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
 		float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
 
-		float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-		float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+		float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+		float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
 
 		float t;
 
@@ -689,35 +745,35 @@ public:
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(PlayerBun);
-		playerUnits.push_back(PlayerBun);
+		robotUnits.push_back(PlayerBun);
 
 		// Setup the second robot
 		position = vec3(20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(NPCBun);
-		playerUnits.push_back(NPCBun);
+		robotUnits.push_back(NPCBun);
 
 		// Setup the third robot
 		position = vec3(-20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(robot3);
-		playerUnits.push_back(robot3);
+		robotUnits.push_back(robot3);
 		
 		// Setup the forth robot
 		position = vec3(30.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
 		sceneActorGameObjs.push_back(robot4);
-		playerUnits.push_back(robot4);
+		robotUnits.push_back(robot4);
 
 		// Setup the first alien
 		position = vec3(20.0f, 0.0f, 25.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien0);
-		enemyUnits.push_back(alien0);
+		alienUnits.push_back(alien0);
 		
 
 		// Setup the 2nd alien
@@ -725,21 +781,21 @@ public:
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien1);
-		enemyUnits.push_back(alien1);
+		alienUnits.push_back(alien1);
 
 		// Setup the 3rd alien
 		position = vec3(10.0f, 0.0f, 15.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien2);
-		enemyUnits.push_back(alien2);
+		alienUnits.push_back(alien2);
 
 		// Setup the 4th alien
 		position = vec3(15.0f, 0.0f, 10.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien3);
-		enemyUnits.push_back(alien3);
+		alienUnits.push_back(alien3);
 
 		// ---TEMPORARY CUBE TERRAIN -- 
 		/*position = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -1077,14 +1133,14 @@ public:
 	{
 		// printf("Update Game Logic\n");
 		int counter = 0;
-		for (int i = 0; i < enemyUnits.size(); i++)
+		for (int i = 0; i < alienUnits.size(); i++)
 		{
-			if (enemyUnits[i]->beenShot)
+			if (alienUnits[i]->beenShot)
 			{
 				counter++;
 			}
 		}
-		if (counter == enemyUnits.size())
+		if (counter == alienUnits.size())
 		{
 			
 			printf("THE ROBOTS HAVE WON!\n");
