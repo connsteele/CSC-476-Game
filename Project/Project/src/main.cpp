@@ -5,15 +5,16 @@
 
 //#define TINYOBJLOADER_IMPLEMENTATION
 //#include "tiny_obj_loader.h"
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb_image.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #include "BaseCode/GLSL.h"
 #include "BaseCode/Program.h"
 #include "BaseCode/Shape.h"
 #include "BaseCode/WindowManager.h"
-#include "BaseCode/GLTextureWriter.h"
+//#include "BaseCode/GLTextureWriter.h"
 #include "BaseCode/MatrixStack.h"
+// #include "BaseCode/Texture.h"
 #include "GameObject.h" // Our Game Object Class
 #include "ourCoreFuncs.h"
 
@@ -43,6 +44,8 @@ vector<shared_ptr<GameObject> > sceneActorGameObjs;
 vector<shared_ptr<GameObject> > robotUnits;
 vector<shared_ptr<GameObject> > alienUnits;
 
+vector<vec3> coverCubesLocs;
+
 //Camera Timing
 float deltaTime = 0.0f, lastTime = glfwGetTime();
 float lastFrame = 0.0f;
@@ -62,7 +65,7 @@ vec3 up = vec3(0, 1, 0);
 
 // Properties for Overhead Camera
 //vec3 oCamCenter = vec3(-33.9f, 51.884197f, 0.059f);
-vec3 oCamEye = vec3(-17.4f, 40.0f, 5.00);
+vec3 oCamEye = vec3(-25.0f, 45.0f, 0.00); // was vec3(-17.4f, 40.0f, 5.00)
 
 // Current Camera
 vec3 curCamEye = oCamEye;
@@ -182,7 +185,7 @@ public:
 	{
 
 		float followMoveSpd = 40.0f * deltaTime;
-		float overheadMoveSpd = 50.0f * deltaTime;
+		float overheadMoveSpd = 80.0f * deltaTime;
 
 		if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
@@ -296,7 +299,7 @@ public:
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
 		{
-			if (isOverheadView)
+			if (isOverheadView && (possessedActor != NULL))
 			{
 				camUpdate = true;
 			}
@@ -532,8 +535,8 @@ public:
 		float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
 		float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
 
-		float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
-		float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+		float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+		float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
 
 		float t;
 
@@ -697,6 +700,14 @@ public:
 
 	}
 
+	void setupCoverCubeLocations()
+	{
+		// X is horizontal for us, and y is vertical
+		coverCubesLocs.push_back(vec3(-39.f, 0.f, -59.f));
+		coverCubesLocs.push_back(vec3(-38.f, 0.f, -59.f));
+		coverCubesLocs.push_back(vec3(-37.f, 0.f, -59.f));
+	}
+
 	void initGeom(const std::string& resourceDirectory)
 	{
 
@@ -731,6 +742,15 @@ public:
 
 		// Setup player bbox
 		initPlayerBbox();
+
+		// Load the image of the map file
+		string str = resourceDirectory + "/images/Map1.bmp";
+		char filepath[1000]; // Char array
+		int width, height, channels;
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		//unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+		//dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+		//strcpy
 
 
 		// Setup new Ground plane
@@ -810,7 +830,8 @@ public:
 		shared_ptr<GameObject> terrainTwo = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
 		sceneActorGameObjs.push_back(terrainTwo);*/
 
-		for (int i = 0; i < 20; i++) {
+		// Randomized Cubes
+		/*for (int i = 0; i < 20; i++) {
 			float randX = -40.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (40.0f - -40.0f)));
 			float randZ = -60.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (60.0f - -60.0f)));
 
@@ -821,7 +842,30 @@ public:
 			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
 			sceneActorGameObjs.push_back(terrainTemp);
 
+		}*/
+
+		// Cover Cubes
+		setupCoverCubeLocations(); // Push back the location of scene cubes into a vector
+		// Render the left cubes
+		for (int i = 0; i < coverCubesLocs.size() ; i++)
+		{
+			position = coverCubesLocs[i];
+			velocity = 0.0f;
+			orientation = glm::vec3(0.0f, 0.0f, 0.0f);
+			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+			sceneActorGameObjs.push_back(terrainTemp);
 		}
+		// Render the right cubes
+		for (int i = 0; i < coverCubesLocs.size(); i++)
+		{
+			position = coverCubesLocs[i];
+			position.z *= -1.f; // flip the horizontal coordinates of the cubes
+			velocity = 0.0f;
+			orientation = glm::vec3(0.0f, 0.0f, 0.0f);
+			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+			sceneActorGameObjs.push_back(terrainTemp);
+		}
+
 	}
 
 	/**** geometry set up for a quad *****/
@@ -942,7 +986,7 @@ public:
 		M->pushMatrix();
 		M->loadIdentity();
 		M->translate(vec3(0.f, -1.f, 0.f)); //move the plane down a little bit in y space 
-		M->scale(vec3(40.f, .1f, 120.f)); // turn the cube into a plane
+		M->scale(vec3(40.f, .1f, 60.f)); // Make sure that the ration is 2:3 for height to width
 
 		groundbox->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 		//add uniforms to shader
