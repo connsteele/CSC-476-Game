@@ -735,43 +735,42 @@ public:
 
 		// Setup new Ground plane
 		glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-		float velocity = 0.0f;
 		glm::vec3 orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+		groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, orientation, false, 0);
 
 
 		// Setup temp player bunny
 		position = vec3(0.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, orientation, true, 1);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
 
 		// Setup the second robot
 		position = vec3(20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, orientation, true, 1);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
 
 		// Setup the third robot
 		position = vec3(-20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, orientation, true, 1);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
 		
 		// Setup the forth robot
 		position = vec3(30.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, 0, orientation, true, 1);
+		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, orientation, true, 1);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
 
 		// Setup the first alien
 		position = vec3(20.0f, 0.0f, 25.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien0);
 		alienUnits.push_back(alien0);
 		
@@ -779,21 +778,21 @@ public:
 		// Setup the 2nd alien
 		position = vec3(10.0f, 0.0f, 20.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
 
 		// Setup the 3rd alien
 		position = vec3(10.0f, 0.0f, 15.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
 
 		// Setup the 4th alien
 		position = vec3(15.0f, 0.0f, 10.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, 0, orientation, true, 2);
+		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 
@@ -816,9 +815,8 @@ public:
 
 
 			position = glm::vec3(randX, 0.0f, randZ);
-			velocity = 0.0f;
 			orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, orientation, false, 0);
 			sceneActorGameObjs.push_back(terrainTemp);
 
 		}
@@ -901,7 +899,7 @@ public:
 			// If there is a collision with a moving object
 			if( !(sceneActorGameObjs[i]->hitByPlayer) && collisionX && collisionY && collisionZ){
 				printf("Camera Collision\n");
-				sceneActorGameObjs[i]->velocity = 0.0f; // Stop the object you collide with
+				//sceneActorGameObjs[i]->velocity = 0.0f; // Stop the object you collide with
 				p1Collisions += 1; // Increment the number of objects the player has collided with
 				sceneActorGameObjs[i]->hitByPlayer = true;
 			}
@@ -987,8 +985,8 @@ public:
 
 				if (wasCollision) {
 					//printf("Collision occured\n");
-					sceneActorGameObjs[i]->velocity = 0;
-					sceneActorGameObjs[j]->velocity = 0;
+					//sceneActorGameObjs[i]->velocity = 0;
+					//sceneActorGameObjs[j]->velocity = 0;
 				}
 			}
 		}
