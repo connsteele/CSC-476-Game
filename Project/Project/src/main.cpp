@@ -768,6 +768,8 @@ public:
 		float tileVelocity = 0.0f; // Current tile's velocity, Will always be 0.0f
 		glm::vec3 tileOrientation = glm::vec3(0.0f, 0.0f, 0.0f); // Current tile's orientation, Will always be vec3(0.0f)
 		glm::vec3 tilePos = glm::vec3(0.0f);
+		float tileScale = 4.0f;
+		float verticalOffset = (height * tileScale)/2.0f, horizontalOffset = (width * tileScale)/2.0f;
 		for (int i = 0; i < width; i++)
 		{
 			for (int j = 0; j < height; j++)
@@ -779,7 +781,7 @@ public:
 				//--- Set the position of the object based on the color of the current pixel in the image
 				if ((red == 255) && (green == 255) && (blue == 255)) // If the color is white draw a ground tile 
 				{
-					tilePos = glm::vec3(j * -2.0f, -2.0f, i * 2.0f);
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileVelocity, tileOrientation, false, 0);
 					sceneActorGameObjs.push_back(terrainTemp);
@@ -787,7 +789,7 @@ public:
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
-					tilePos = glm::vec3(j * -2.0f, -1.0f, i * 2.0f);
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileVelocity, tileOrientation, false, 0);
 					sceneActorGameObjs.push_back(terrainTemp);
@@ -795,7 +797,7 @@ public:
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
-					tilePos = glm::vec3(j * -2.0f, 0.0f, i * 2.0f);
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, 0.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileVelocity, tileOrientation, false, 0);
 					sceneActorGameObjs.push_back(terrainTemp);
@@ -803,7 +805,7 @@ public:
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green draw a jump tile
 				{
-					tilePos = glm::vec3(j * -2.0f, -2.0f, i * 2.0f);
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileVelocity, tileOrientation, false, 0);
 					sceneActorGameObjs.push_back(terrainTemp);
@@ -811,13 +813,13 @@ public:
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
-					tilePos = glm::vec3(j * -2.0f, -1.0f, i * 2.0f);
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileVelocity, tileOrientation, false, 0);
 					sceneActorGameObjs.push_back(terrainTemp);
 					sceneActorGameObjs[sceneActorGameObjs.size() - 1]->isUpperTile = true;
 
-					tilePos = glm::vec3(j * -2.0f, 1.0f, i * 2.0f);
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileVelocity, tileOrientation, false, 0);
 					sceneActorGameObjs.push_back(terrainTemp);
@@ -1163,22 +1165,27 @@ public:
 				if (sceneActorGameObjs[i]->isGroundTile)
 				{
 					SetMaterial(1);
+					M->scale(vec3(2.f, 2.f, 2.f));
 				}
 				else if (sceneActorGameObjs[i]->isUpperTile)
 				{
 					SetMaterial(2);
+					M->scale(vec3(2.f, 2.f, 2.f));
 				}
 				else if (sceneActorGameObjs[i]->isCoverTile)
 				{
 					SetMaterial(3);
+					M->scale(vec3(2.f, 2.f, 2.f));
 				}
 				else if (sceneActorGameObjs[i]->isJumpTile)
 				{
 					SetMaterial(4);
+					M->scale(vec3(2.f, 2.f, 2.f));
 				}
 				else if (sceneActorGameObjs[i]->isUpperCoverTile)
 				{
 					SetMaterial(3);
+					M->scale(vec3(2.f, 2.f, 2.f));
 				}
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
