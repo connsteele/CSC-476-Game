@@ -708,6 +708,14 @@ public:
 		coverCubesLocs.push_back(vec3(-37.f, 0.f, -59.f));
 	}
 
+	// Used with the image of the map
+	int getColor(unsigned char* data, int width, int x, int y, int rgb)
+	{
+		// rgb should be 0 for red, 1 for green, 2 for blue
+		int index = (3 * x) + (3 * width * y) + rgb;
+		return (int)data[index];
+	}
+
 	void initGeom(const std::string& resourceDirectory)
 	{
 
@@ -743,14 +751,26 @@ public:
 		// Setup player bbox
 		initPlayerBbox();
 
-		// Load the image of the map file
+		//---  Load the image of the map file
 		string str = resourceDirectory + "/images/Map1.bmp";
 		char filepath[1000]; // Char array
 		int width, height, channels;
 		strcpy(filepath, str.c_str()); // copy the string into the char array
-		//unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
-		//dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
-		//strcpy
+		unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+
+		for (int i = 0; i < width; i++)
+		{
+			for (int j = 0; j < height; j++)
+			{
+				int red = getColor(dataLayout, width, i, j, 0);
+				int green = getColor(dataLayout, width, i, j, 1);
+				int blue = getColor(dataLayout, width, i, j, 2);
+				printf("current Width: %d, Height: %d, Color: %d %d %d\n", i, j, red, green, blue);
+			}
+
+		}
+		//need to free the dataLayout after ur done w/ it still
 
 
 		// Setup new Ground plane
