@@ -20,6 +20,12 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->orientation = orient;
 	this->visibleBbox = visibleBbox;
 	this->beenShot = false;
+	this->isGroundTile = false;
+	this->isUpperTile = false;
+	this->isCoverTile = false;
+	this->isJumpTile = false;
+	this->isUpperCoverTile = false;
+
 
 	elapsedTime = 0.0f;
 
