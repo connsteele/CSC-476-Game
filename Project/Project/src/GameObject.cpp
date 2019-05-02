@@ -3,7 +3,7 @@
 // Connor Steele and Chris Gix Game Object Implementation
 
 
-GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team)
+GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team, bool isStaticGeom)
 {
 	this->nameObj = gameObjName;
 	this->objModel = objModel;
@@ -24,6 +24,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isCoverTile = false;
 	this->isJumpTile = false;
 	this->isUpperCoverTile = false;
+	this->isStaticGeom = isStaticGeom;
 
 	this->team = team;
 	this->currWeapon = 0;
