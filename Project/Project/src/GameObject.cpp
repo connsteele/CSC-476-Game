@@ -25,6 +25,8 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isJumpTile = false;
 	this->isUpperCoverTile = false;
 
+	this->team = team;
+	this->currWeapon = 0;
 
 	elapsedTime = 0.0f;
 

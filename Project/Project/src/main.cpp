@@ -914,9 +914,8 @@ public:
 
 
 			position = glm::vec3(randX, 0.0f, randZ);
-			velocity = 0.0f;
 			orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
+			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, orientation, false, 0);
 			sceneActorGameObjs.push_back(terrainTemp);
 
 		}*/
