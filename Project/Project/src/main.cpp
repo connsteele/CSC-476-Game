@@ -40,7 +40,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 //--- Vector of all actor game objects plus arrays of player units and enemy units
-vector<shared_ptr<GameObject> > sceneActorGameObjs;
+vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs;
 vector<shared_ptr<GameObject> > robotUnits;
 vector<shared_ptr<GameObject> > alienUnits;
 
@@ -768,6 +768,7 @@ public:
 		glm::vec3 tileOrientation = glm::vec3(0.0f, 0.0f, 0.0f); // Current tile's orientation, Will always be vec3(0.0f)
 		glm::vec3 tilePos = glm::vec3(0.0f);
 		float tileScale = 2.0f;
+		shared_ptr<GameObject> terrainTemp;
 		float verticalOffset = (height * tileScale)/2.0f, horizontalOffset = (width * tileScale)/2.0f;
 		for (int i = 0; i < width; i++)
 		{
@@ -782,47 +783,47 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0);
-					sceneActorGameObjs.push_back(terrainTemp);
-					sceneActorGameObjs[sceneActorGameObjs.size()-1]->isGroundTile = true;
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0);
-					sceneActorGameObjs.push_back(terrainTemp);
-					sceneActorGameObjs[sceneActorGameObjs.size() - 1]->isUpperTile = true;
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, 0.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0);
-					sceneActorGameObjs.push_back(terrainTemp);
-					sceneActorGameObjs[sceneActorGameObjs.size() - 1]->isCoverTile = true;
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green draw a jump tile
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0);
-					sceneActorGameObjs.push_back(terrainTemp);
-					sceneActorGameObjs[sceneActorGameObjs.size() - 1]->isJumpTile = true;
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true;
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0);
-					sceneActorGameObjs.push_back(terrainTemp);
-					sceneActorGameObjs[sceneActorGameObjs.size() - 1]->isUpperTile = true;
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0);
-					sceneActorGameObjs.push_back(terrainTemp);
-					sceneActorGameObjs[sceneActorGameObjs.size() - 1]->isUpperCoverTile = true;
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
 				}
 				
 			}
@@ -840,35 +841,35 @@ public:
 		// Setup temp player bunny
 		position = vec3(0.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, orientation, true, 1);
+		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
 
 		// Setup the second robot
 		position = vec3(20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, orientation, true, 1);
+		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
 
 		// Setup the third robot
 		position = vec3(-20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, orientation, true, 1);
+		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
 		
 		// Setup the forth robot
 		position = vec3(30.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, orientation, true, 1);
+		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
 
 		// Setup the first alien
 		position = vec3(20.0f, 0.0f, 25.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2);
+		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien0);
 		alienUnits.push_back(alien0);
 		
@@ -876,21 +877,21 @@ public:
 		// Setup the 2nd alien
 		position = vec3(10.0f, 0.0f, 20.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2);
+		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
 
 		// Setup the 3rd alien
 		position = vec3(10.0f, 0.0f, 15.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2);
+		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
 
 		// Setup the 4th alien
 		position = vec3(15.0f, 0.0f, 10.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2);
+		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 
@@ -1142,7 +1143,6 @@ public:
 				M->loadIdentity();
 
 				// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-				
 				sceneActorGameObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 				// bunBun->DoCollisions()
 
@@ -1159,32 +1159,7 @@ public:
 				{
 					SetMaterial(1);
 				}
-				// If terrain
-				if (sceneActorGameObjs[i]->isGroundTile)
-				{
-					SetMaterial(1);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneActorGameObjs[i]->isUpperTile)
-				{
-					SetMaterial(2);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneActorGameObjs[i]->isCoverTile)
-				{
-					SetMaterial(3);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneActorGameObjs[i]->isJumpTile)
-				{
-					SetMaterial(4);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneActorGameObjs[i]->isUpperCoverTile)
-				{
-					SetMaterial(3);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
+
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 
@@ -1203,6 +1178,58 @@ public:
 
 		return;
 
+	}
+
+	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P)
+	{
+		prog->bind();
+
+		
+		for (int i = 0; i < sceneTerrainObjs.size(); i++)
+		{
+			M->pushMatrix();
+			M->loadIdentity();
+
+			// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
+			sceneTerrainObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+			// If terrain
+			if (sceneTerrainObjs[i]->isGroundTile)
+			{
+				SetMaterial(1);
+				//M->scale(vec3(2.f, 2.f, 2.f));
+			}
+			else if (sceneTerrainObjs[i]->isUpperTile)
+			{
+				SetMaterial(2);
+				//M->scale(vec3(2.f, 2.f, 2.f));
+			}
+			else if (sceneTerrainObjs[i]->isCoverTile)
+			{
+				SetMaterial(3);
+				//M->scale(vec3(2.f, 2.f, 2.f));
+			}
+			else if (sceneTerrainObjs[i]->isJumpTile)
+			{
+				SetMaterial(4);
+				//M->scale(vec3(2.f, 2.f, 2.f));
+			}
+			else if (sceneTerrainObjs[i]->isUpperCoverTile)
+			{
+				SetMaterial(3);
+				//M->scale(vec3(2.f, 2.f, 2.f));
+			}
+			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+
+			glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
+			sceneTerrainObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
+			M->popMatrix();
+		}
+
+		prog->unbind();
 	}
 
 	void interpolateCamera(float interp)
@@ -1454,7 +1481,8 @@ public:
 
 		M->pushMatrix();
 		//checkAllGameObjects();
-		renderSceneActors(M, P, isOverheadView, 0, 0);
+		renderSceneActors(M, P, isOverheadView, 0, 0); // render all the actors in the scene
+		renderTerrain(M, P); // Render all objs in the terrain
 		checkAllGameObjects();
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();

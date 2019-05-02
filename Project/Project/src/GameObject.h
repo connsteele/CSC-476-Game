@@ -25,7 +25,7 @@ public:
 	glm::vec3 bboxSize;
 	glm::vec3 bboxCenter;
 	glm::mat4 bboxTransform;
-	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot, isGroundTile, isUpperTile, isCoverTile, isJumpTile, isUpperCoverTile;
+	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot, isGroundTile, isUpperTile, isCoverTile, isJumpTile, isUpperCoverTile, isStaticGeom;
 	int team; // 0 is neutral, 1 for robots(player team), 2 for aliens
 	int currWeapon; //0 for default weapon, 1 for sphere gun, 2 for shotgun
 
@@ -35,7 +35,7 @@ public:
 
 
 
-	GameObject(const std::string& name, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team);
+	GameObject(const std::string& name, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team, bool isStaticGeom);
 	void DrawGameObj();
 	void renderBbox();
 	void initBbox();
