@@ -27,6 +27,7 @@ public:
 	glm::mat4 bboxTransform;
 	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot;
 	int team; // 0 is neutral, 1 for robots(player team), 2 for aliens
+	int currWeapon; //0 for default weapon, 1 for sphere gun, 2 for shotgun
 
 	GLfloat min_x, max_x,
 		min_y, max_y,
