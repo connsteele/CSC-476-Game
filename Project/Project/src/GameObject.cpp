@@ -3,7 +3,7 @@
 // Connor Steele and Chris Gix Game Object Implementation
 
 
-GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, float vel, glm::vec3 orient, bool visibleBbox, int team)
+GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team)
 {
 	this->nameObj = gameObjName;
 	this->objModel = objModel;
@@ -16,7 +16,6 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	//Initialize globals
 	this->curShaderProg = curShaderProg;
 	this->position = pos;
-	this->velocity = vel;
 	this->orientation = orient;
 	this->visibleBbox = visibleBbox;
 	this->beenShot = false;
@@ -47,7 +46,7 @@ void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr
 	DoCollisions(M);
 
 	//-- Calculate new position and translate the model
-	position += velocity * orientation * dt;
+	position += 0.0f * orientation * dt;
 	//printf("Obj Current Pos: x: %f y: %f z: %f\n", position.x, position.y, position.z);
 	M->translate(position);
 
