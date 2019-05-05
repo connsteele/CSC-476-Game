@@ -41,11 +41,16 @@ public:
 	void initBbox();
 	void step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up);
 	void DoCollisions(std::shared_ptr<MatrixStack> &M); //std::shared_ptr<GameObject> world
+    bool FirePistol(glm::vec3 rayDir, std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter);
+    bool FireShotgun(glm::vec3 rayDirCent, glm::vec3 rayDirLeft, glm::vec3 rayDirRight, glm::vec3 rayDirDown, glm::vec3 rayDirUp,
+                std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter);
 	~GameObject(); // Destroyer
 
 private:
 	float elapsedTime = 0.0f;
-	
+
+    bool RayTraceCamera(glm::vec3 rayDir, std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter);
+
 
 };
 

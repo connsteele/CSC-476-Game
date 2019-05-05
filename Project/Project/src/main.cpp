@@ -346,40 +346,19 @@ public:
 		if (action == GLFW_PRESS) // Attempt at ray casting done here
 		{
 			mouseDown = true;
+
 			glfwGetCursorPos(window, &posX, &posY);
 			cout << "Pos X " << posX << " Pos Y " << posY << endl;
 
-			int width, height;
-			glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
-
-			float normX = (2.0f * posX) / width - 1.0f;
-			float normY = 1.0f - (2.0f * posY) / height;
-			float normZ = 1.0f;
-			//Normalized device coordinates of mouse click
-			vec3 ray_nds = vec3(normX, normY, normZ);
-			//make z point forward (not 100% sure why this isnt done above)
-			vec4 ray_clip = vec4(ray_nds.x, ray_nds.y, -1.0f, 1.0f);
-
-			//projection matrix
-			float aspect = width / (float)height;
-			mat4 ourProjection = perspective(45.0f, aspect, 0.01f, 100.0f);
-			//go backwards in pipeline from clip space to eye space(?) (only for x,y)
-			vec4 ray_eye = inverse(ourProjection) * ray_clip;
-			ray_eye = vec4(ray_eye.x, ray_eye.y, -1.0f, 0.0f);
-			//View matrix
-			mat4 ourView = lookAt(curCamEye, curCamCenter, up);
-			vec4 ray_wor_temp = inverse(ourView) * ray_eye;
-			vec3 ray_wor = vec3(ray_wor_temp.x, ray_wor_temp.y, ray_wor_temp.z);
-			ray_wor = normalize(ray_wor); //Ray direction vector normalized
-			//printf("ray in world coordinates: %f, %f, %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
+            vec3 ray_wor = GenerateRay(posX, posY); // Generate ray
 
 
 			if(whoseTurn == 1) {
                 //Perform team 1 ray trace operations
-                TeamOneRayTrace(ray_wor);
+                TeamOneRayTrace(ray_wor, posX, posY);
             }
 			else{
-			    TeamTwoRayTrace(ray_wor);
+			    TeamTwoRayTrace(ray_wor, posX, posY);
 			}
 
 			// Go back to the overhead view after shooting
@@ -453,7 +432,7 @@ public:
 	}
 
 
-	void TeamOneRayTrace(vec3 ray_wor){
+	void TeamOneRayTrace(vec3 ray_wor, double posX, double posY){
         for (int i = 0; i < robotUnits.size(); i++) {
 
 
@@ -471,11 +450,35 @@ public:
 
         }
 
+        //Firing weapon team one
         for(int i = 0; i < alienUnits.size(); i++){
 
             GameObject currObject = *alienUnits[i];
 
-            bool isClicked = RayTraceCamera(ray_wor, alienUnits[i]);
+            bool isClicked;
+
+            if(possessedActor != NULL) {
+
+                if (possessedActor->currWeapon == 0) { // fire pistol
+
+                    isClicked = possessedActor->FirePistol(ray_wor, alienUnits[i], curCamCenter);
+
+                } else if (possessedActor->currWeapon == 1) {
+
+                    vec3 ray_left = GenerateRay(posX - 50.0, posY);
+                    vec3 ray_right = GenerateRay(posX + 50.0, posY);
+                    vec3 ray_down = GenerateRay(posX, posY + 50.0);
+                    vec3 ray_up = GenerateRay(posX, posY - 50.0);
+
+                    printf("shotgun raycenter: %f %f %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
+                    printf("shotgun rayleft: %f %f %f\n", ray_left.x, ray_left.y, ray_left.z);
+
+                    isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, alienUnits[i], curCamCenter);
+
+                } else {
+                    //isClicked = possessedActor->FireExplosive();
+                }
+            }
 
             if(isClicked && possessedActor != NULL && !isOverheadView){
 
@@ -485,7 +488,7 @@ public:
         }
 	}
 
-	void TeamTwoRayTrace(vec3 ray_wor){
+	void TeamTwoRayTrace(vec3 ray_wor, double posX, double posY){
         for (int i = 0; i < alienUnits.size(); i++) {
 
 
@@ -503,11 +506,13 @@ public:
 
         }
 
+        //Firing Weapon team 2
         for(int i = 0; i < robotUnits.size(); i++){
 
             GameObject currObject = *robotUnits[i];
 
-            bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
+            //bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
+            bool isClicked = possessedActor->FirePistol(ray_wor, robotUnits[i], curCamCenter);
 
             if(isClicked && possessedActor != NULL && !isOverheadView){
 
@@ -515,6 +520,33 @@ public:
                 robotUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
             }
         }
+	}
+
+	vec3 GenerateRay(double posX, double posY){
+        int width, height;
+        glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+
+        float normX = (2.0f * posX) / width - 1.0f;
+        float normY = 1.0f - (2.0f * posY) / height;
+        float normZ = 1.0f;
+        //Normalized device coordinates of mouse click
+        vec3 ray_nds = vec3(normX, normY, normZ);
+        //make z point forward (not 100% sure why this isnt done above)
+        vec4 ray_clip = vec4(ray_nds.x, ray_nds.y, -1.0f, 1.0f);
+
+        //projection matrix
+        float aspect = width / (float)height;
+        mat4 ourProjection = perspective(45.0f, aspect, 0.01f, 100.0f);
+        //go backwards in pipeline from clip space to eye space(?) (only for x,y)
+        vec4 ray_eye = inverse(ourProjection) * ray_clip;
+        ray_eye = vec4(ray_eye.x, ray_eye.y, -1.0f, 0.0f);
+        //View matrix
+        mat4 ourView = lookAt(curCamEye, curCamCenter, up);
+        vec4 ray_wor_temp = inverse(ourView) * ray_eye;
+        vec3 ray_wor = vec3(ray_wor_temp.x, ray_wor_temp.y, ray_wor_temp.z);
+        ray_wor = normalize(ray_wor); //Ray direction vector normalized
+
+        return ray_wor;
 	}
 
 
@@ -535,8 +567,8 @@ public:
 		float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
 		float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
 
-		float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-		float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+		float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+		float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
 
 		float t;
 

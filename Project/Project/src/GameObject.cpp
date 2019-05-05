@@ -27,7 +27,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isStaticGeom = isStaticGeom;
 
 	this->team = team;
-	this->currWeapon = 0;
+	this->currWeapon = 1;
 
 	elapsedTime = 0.0f;
 
@@ -176,4 +176,59 @@ void GameObject::initBbox()
 
 GameObject::~GameObject()
 {
+}
+
+bool GameObject::FirePistol(glm::vec3 rayDir, std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter){
+    //logic for default pistol
+
+    bool isClicked = RayTraceCamera(rayDir, currObjectPointer, curCamCenter);
+    return isClicked;
+}
+
+bool GameObject::FireShotgun(glm::vec3 rayDirCent, glm::vec3 rayDirLeft, glm::vec3 rayDirRight, glm::vec3 rayDirDown, glm::vec3 rayDirUp, std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter){
+    //logic for default pistol
+
+    bool isShotCenter = RayTraceCamera(rayDirCent, currObjectPointer, curCamCenter);
+    bool isShotLeft = RayTraceCamera(rayDirLeft, currObjectPointer, curCamCenter);
+    bool isShotRight = RayTraceCamera(rayDirRight, currObjectPointer, curCamCenter);
+    bool isShotDown = RayTraceCamera(rayDirDown, currObjectPointer, curCamCenter);
+    bool isShotUp = RayTraceCamera(rayDirUp, currObjectPointer, curCamCenter);
+    return isShotCenter || isShotLeft || isShotRight || isShotDown || isShotUp;
+}
+
+bool GameObject::RayTraceCamera(glm::vec3 rayDir, std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter){
+    glm::vec3 dirfrac = glm::vec3(1.0f / rayDir.x, 1.0f / rayDir.y, 1.0f / rayDir.z);
+
+    GameObject currObject = *currObjectPointer;
+
+    glm::vec3 lb = currObject.bboxCenter - (currObject.bboxSize / 2.0f);
+    glm::vec3 rt = currObject.bboxCenter + (currObject.bboxSize / 2.0f);
+
+    float t1 = (lb.x - curCamCenter.x)*dirfrac.x;
+    float t2 = (rt.x - curCamCenter.x)*dirfrac.x;
+    float t3 = (lb.y - curCamCenter.y)*dirfrac.y;
+    float t4 = (rt.y - curCamCenter.y)*dirfrac.y;
+    float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
+    float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
+
+    float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+    float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+
+    float t;
+
+    if (tmax < 0)
+    {
+        t = tmax;
+        return false;
+    }
+
+    // if tmin > tmax, ray doesn't intersect AABB
+    if (tmin > tmax)
+    {
+        t = tmax;
+        return false;
+    }
+
+    t = tmin;
+    return true;
 }
