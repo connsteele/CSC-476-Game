@@ -11,7 +11,6 @@ void UIFrame::draw() {
 ///UIButton///
 //////////////
 void UIButton::draw() {
-
 }
 
 //////////////

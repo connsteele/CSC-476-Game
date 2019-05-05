@@ -6,22 +6,34 @@
 #include "glm/glm.hpp"
 
 class UIController {
+private:
+	std::vector<UIElement> elements;
+public:
+	UIController() {}
+	void addElement(UIElement newUI) { elements.push_back(newUI); }
+	void drawAll(UIElement newUI);
+	void deleteAll();
+};
+
+class UIElement {
 protected:
 	glm::vec3 pos, mainColor;
 	int ID;
+	UIElement *element;
 
 public:
-	UIController() {}
-	UIController(glm::vec3 pos, glm::vec3 mainColor, int ID) {
+	UIElement() {}
+	UIElement(glm::vec3 pos, glm::vec3 mainColor, int ID) {
 		this->pos = pos;
 		this->mainColor = mainColor;
 		this->ID = ID;
 	}
+	void draw();
 };
 
-class UIFrame : public UIController {
+class UIFrame : public UIElement {
 private:
-	std::vector<UIController> elements;
+	std::vector<UIElement> elements;
 	float width, height;
 	int pos_flags, window_flags, size_flags;
 
@@ -37,11 +49,11 @@ public:
 		this->size_flags = size_flags;
 	}
 
-	void addElement(UIController newUI) { elements.push_back(newUI); }
+	void addElement(UIElement newUI) { elements.push_back(newUI); }
 	void draw();
 };
 
-class UIButton : public UIController {
+class UIButton : public UIElement {
 private:
 	std::string name;
 	glm::vec3 pressedColor;
@@ -58,7 +70,7 @@ public:
 	void draw();
 };
 
-class UISlider : public UIController {
+class UISlider : public UIElement {
 private:
 	float min_value, max_value, power, init_value;
 
@@ -76,7 +88,7 @@ public:
 	void draw();
 };
 
-class UIBar : public UIController {
+class UIBar : public UIElement {
 private:
 	float fraction;
 	std::string name;
