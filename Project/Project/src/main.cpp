@@ -450,41 +450,62 @@ public:
 
         }
 
-        //Firing weapon team one
-        for(int i = 0; i < alienUnits.size(); i++){
+        //Only run weapon loop of possessed actor exists
+        if(possessedActor != NULL){
 
-            GameObject currObject = *alienUnits[i];
+            vector<shared_ptr<GameObject> > HitObjects;
 
-            bool isClicked;
+            //if weapon is shotgun
+            if(possessedActor->currWeapon == 1){
 
-            if(possessedActor != NULL) {
+                //Generate rays one time, not once for each actor
+                vec3 ray_left = GenerateRay(posX - 50.0, posY);
+                vec3 ray_right = GenerateRay(posX + 50.0, posY);
+                vec3 ray_down = GenerateRay(posX, posY + 50.0);
+                vec3 ray_up = GenerateRay(posX, posY - 50.0);
 
-                if (possessedActor->currWeapon == 0) { // fire pistol
+                //Check ray collisions with all game objects
+                for(int i = 0; i < sceneActorGameObjs.size(); i++){
+                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, sceneActorGameObjs[i], curCamCenter);
 
-                    isClicked = possessedActor->FirePistol(ray_wor, alienUnits[i], curCamCenter);
+                    if(isClicked){
+                        //If ray hit object add to vector of hit objects
+                        HitObjects.push_back(sceneActorGameObjs[i]);
+                    }
+                }
 
-                } else if (possessedActor->currWeapon == 1) {
+            }
+            else if(possessedActor->currWeapon == 0){
 
-                    vec3 ray_left = GenerateRay(posX - 50.0, posY);
-                    vec3 ray_right = GenerateRay(posX + 50.0, posY);
-                    vec3 ray_down = GenerateRay(posX, posY + 50.0);
-                    vec3 ray_up = GenerateRay(posX, posY - 50.0);
+                for(int i = 0; i < sceneActorGameObjs.size(); i++){
+                    bool isClicked = possessedActor->FirePistol(ray_wor, sceneActorGameObjs[i], curCamCenter);
 
-                    printf("shotgun raycenter: %f %f %f\n", ray_wor.x, ray_wor.y, ray_wor.z);
-                    printf("shotgun rayleft: %f %f %f\n", ray_left.x, ray_left.y, ray_left.z);
+                    if(isClicked){
+                        //If ray hit object add to vector of hit objects
+                        HitObjects.push_back(sceneActorGameObjs[i]);
+                    }
+                }
 
-                    isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, alienUnits[i], curCamCenter);
+            }
 
-                } else {
-                    //isClicked = possessedActor->FireExplosive();
+            //Loop to see what the closest object hit was
+            float minDistance = 1000000.0f;
+            float minDistanceIndex = -1;
+
+            for(int i = 0; i < HitObjects.size(); i++){
+                float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
+                if(currDistance < minDistance){
+                    minDistance = currDistance;
+                    minDistanceIndex = i;
+                }
+            }
+            if(HitObjects.size() != 0) {
+
+                if (HitObjects[minDistanceIndex]->team == 2 && !isOverheadView) {
+                    HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
                 }
             }
 
-            if(isClicked && possessedActor != NULL && !isOverheadView){
-
-                printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
-                alienUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
-            }
         }
 	}
 
@@ -502,23 +523,65 @@ public:
                 possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
 
             }
-            // }
 
         }
 
-        //Firing Weapon team 2
-        for(int i = 0; i < robotUnits.size(); i++){
+        //Only run weapon loop of possessed actor exists
+        if(possessedActor != NULL){
 
-            GameObject currObject = *robotUnits[i];
+            vector<shared_ptr<GameObject> > HitObjects;
 
-            //bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
-            bool isClicked = possessedActor->FirePistol(ray_wor, robotUnits[i], curCamCenter);
+            //if weapon is shotgun
+            if(possessedActor->currWeapon == 1){
 
-            if(isClicked && possessedActor != NULL && !isOverheadView){
+                //Generate rays one time, not once for each actor
+                vec3 ray_left = GenerateRay(posX - 50.0, posY);
+                vec3 ray_right = GenerateRay(posX + 50.0, posY);
+                vec3 ray_down = GenerateRay(posX, posY + 50.0);
+                vec3 ray_up = GenerateRay(posX, posY - 50.0);
 
-                printf("Hit Object: %s\n", currObject.nameObj.c_str()); // c_str() is used to make the c++ string a c string
-                robotUnits[i]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+                //Check ray collisions with all game objects
+                for(int i = 0; i < sceneActorGameObjs.size(); i++){
+                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, sceneActorGameObjs[i], curCamCenter);
+
+                    if(isClicked){
+                        //If ray hit object add to vector of hit objects
+                        HitObjects.push_back(sceneActorGameObjs[i]);
+                    }
+                }
+
             }
+            else if(possessedActor->currWeapon == 0){
+
+                for(int i = 0; i < sceneActorGameObjs.size(); i++){
+                    bool isClicked = possessedActor->FirePistol(ray_wor, sceneActorGameObjs[i], curCamCenter);
+
+                    if(isClicked){
+                        //If ray hit object add to vector of hit objects
+                        HitObjects.push_back(sceneActorGameObjs[i]);
+                    }
+                }
+
+            }
+
+            //Loop to see what the closest object hit was
+            float minDistance = 1000000.0f;
+            float minDistanceIndex = -1;
+
+            for(int i = 0; i < HitObjects.size(); i++){
+                float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
+                if(currDistance < minDistance){
+                    minDistance = currDistance;
+                    minDistanceIndex = i;
+                }
+            }
+            if(HitObjects.size() != 0) {
+
+                if (HitObjects[minDistanceIndex]->team == 1 && !isOverheadView) {
+                    HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+                }
+            }
+
         }
 	}
 

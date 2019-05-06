@@ -27,7 +27,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isStaticGeom = isStaticGeom;
 
 	this->team = team;
-	this->currWeapon = 1;
+	this->currWeapon = 0;
 
 	elapsedTime = 0.0f;
 
