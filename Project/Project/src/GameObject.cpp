@@ -211,8 +211,8 @@ bool GameObject::RayTraceCamera(glm::vec3 rayDir, std::shared_ptr<GameObject> cu
     float t5 = (lb.z - curCamCenter.z)*dirfrac.z;
     float t6 = (rt.z - curCamCenter.z)*dirfrac.z;
 
-    float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
-    float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+    float tmin = std::fmaxf(std::fmaxf(std::fminf(t1, t2), std::fminf(t3, t4)), std::fminf(t5, t6));
+    float tmax = std::fminf(std::fminf(std::fmaxf(t1, t2), std::fmaxf(t3, t4)), std::fmaxf(t5, t6));
 
     float t;
 
