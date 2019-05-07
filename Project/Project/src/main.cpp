@@ -40,7 +40,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 //--- Vector of all actor game objects plus arrays of player units and enemy units
-vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs;
+vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs, AllGameObjects;
 vector<shared_ptr<GameObject> > robotUnits;
 vector<shared_ptr<GameObject> > alienUnits;
 
@@ -465,24 +465,24 @@ public:
                 vec3 ray_up = GenerateRay(posX, posY - 50.0);
 
                 //Check ray collisions with all game objects
-                for(int i = 0; i < sceneActorGameObjs.size(); i++){
-                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, sceneActorGameObjs[i], curCamCenter);
+                for(int i = 0; i < AllGameObjects.size(); i++){
+                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(sceneActorGameObjs[i]);
+                        HitObjects.push_back(AllGameObjects[i]);
                     }
                 }
 
             }
             else if(possessedActor->currWeapon == 0){
 
-                for(int i = 0; i < sceneActorGameObjs.size(); i++){
-                    bool isClicked = possessedActor->FirePistol(ray_wor, sceneActorGameObjs[i], curCamCenter);
+                for(int i = 0; i < AllGameObjects.size(); i++){
+                    bool isClicked = possessedActor->FirePistol(ray_wor, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(sceneActorGameObjs[i]);
+                        HitObjects.push_back(AllGameObjects[i]);
                     }
                 }
 
@@ -541,24 +541,24 @@ public:
                 vec3 ray_up = GenerateRay(posX, posY - 50.0);
 
                 //Check ray collisions with all game objects
-                for(int i = 0; i < sceneActorGameObjs.size(); i++){
-                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, sceneActorGameObjs[i], curCamCenter);
+                for(int i = 0; i < AllGameObjects.size(); i++){
+                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(sceneActorGameObjs[i]);
+                        HitObjects.push_back(AllGameObjects[i]);
                     }
                 }
 
             }
             else if(possessedActor->currWeapon == 0){
 
-                for(int i = 0; i < sceneActorGameObjs.size(); i++){
-                    bool isClicked = possessedActor->FirePistol(ray_wor, sceneActorGameObjs[i], curCamCenter);
+                for(int i = 0; i < AllGameObjects.size(); i++){
+                    bool isClicked = possessedActor->FirePistol(ray_wor, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(sceneActorGameObjs[i]);
+                        HitObjects.push_back(AllGameObjects[i]);
                     }
                 }
 
@@ -881,6 +881,7 @@ public:
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
+                    AllGameObjects.push_back(terrainTemp);
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
@@ -889,6 +890,7 @@ public:
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
+                    AllGameObjects.push_back(terrainTemp);
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
@@ -897,6 +899,7 @@ public:
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
+                    AllGameObjects.push_back(terrainTemp);
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green draw a jump tile
 				{
@@ -905,6 +908,7 @@ public:
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true;
+                    AllGameObjects.push_back(terrainTemp);
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -919,6 +923,7 @@ public:
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
+                    AllGameObjects.push_back(terrainTemp);
 				}
 				
 			}
@@ -939,6 +944,7 @@ public:
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
+        AllGameObjects.push_back(PlayerBun);
 
 		// Setup the second robot
 		position = vec3(20.0f, 0.0f, -25.0f);
@@ -946,6 +952,7 @@ public:
 		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
+        AllGameObjects.push_back(NPCBun);
 
 		// Setup the third robot
 		position = vec3(-20.0f, 0.0f, -25.0f);
@@ -953,6 +960,7 @@ public:
 		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
+        AllGameObjects.push_back(robot3);
 		
 		// Setup the forth robot
 		position = vec3(30.0f, 0.0f, -25.0f);
@@ -960,6 +968,7 @@ public:
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
+        AllGameObjects.push_back(robot4);
 
 		// Setup the first alien
 		position = vec3(20.0f, 0.0f, 25.0f);
@@ -967,6 +976,7 @@ public:
 		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien0);
 		alienUnits.push_back(alien0);
+        AllGameObjects.push_back(alien0);
 		
 
 		// Setup the 2nd alien
@@ -975,6 +985,7 @@ public:
 		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
+        AllGameObjects.push_back(alien1);
 
 		// Setup the 3rd alien
 		position = vec3(10.0f, 0.0f, 15.0f);
@@ -982,6 +993,7 @@ public:
 		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
+        AllGameObjects.push_back(alien2);
 
 		// Setup the 4th alien
 		position = vec3(15.0f, 0.0f, 10.0f);
@@ -989,6 +1001,7 @@ public:
 		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
+		AllGameObjects.push_back(alien3);
 
 		// ---TEMPORARY CUBE TERRAIN -- 
 		/*position = glm::vec3(0.0f, 0.0f, 0.0f);
