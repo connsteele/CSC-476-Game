@@ -261,6 +261,7 @@ public:
 			{
 				possessedActor->position -= cross(up, camMove) * followMoveSpd;
 			}
+			possessedActor->position.y = 0.0f; // Lock the vertical position of the models
 		}
 		else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
 		{
@@ -856,14 +857,14 @@ public:
 
 		// Initialize the bunny obj mesh VBOs etc
 		bunnyShape = make_shared<Shape>();
-		bunnyShape->loadMesh(resourceDirectory + "/bman.obj");
+		bunnyShape->loadMesh(resourceDirectory + "/bunny.obj");
 		bunnyShape->resize();
 		bunnyShape->init();
 		// bman works but throws hella verteTex things
 
 		// Initialize the bunny obj mesh VBOs etc
 		maRobotShape = make_shared<Shape>();
-		maRobotShape->loadMesh(resourceDirectory + "/bunny.obj"); // has vertTexure issues
+		maRobotShape->loadMesh(resourceDirectory + "/bman.obj"); // has vertTexure issues
 		maRobotShape->resize();
 		maRobotShape->init();
 
@@ -959,8 +960,8 @@ public:
 		glBindTexture(GL_TEXTURE_2D, Tex_Floor);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 		// Send the texture to the shader
@@ -1056,7 +1057,7 @@ public:
 		// Setup temp player bunny
 		position = vec3(0.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
         AllGameObjects.push_back(PlayerBun);
@@ -1064,7 +1065,7 @@ public:
 		// Setup the second robot
 		position = vec3(20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
         AllGameObjects.push_back(NPCBun);
@@ -1072,7 +1073,7 @@ public:
 		// Setup the third robot
 		position = vec3(-20.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
         AllGameObjects.push_back(robot3);
@@ -1080,7 +1081,7 @@ public:
 		// Setup the forth robot
 		position = vec3(30.0f, 0.0f, -25.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", bunnyShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
         AllGameObjects.push_back(robot4);
@@ -1378,9 +1379,13 @@ public:
 					//M->rotate(180.0f, vec3(0, 1, 0));
 					// glUniform1f(prog->getUniform("hit"), 1); //old method
 				}
-				else
+				else if (sceneActorGameObjs[i]->team == 1)
 				{
-					SetMaterial(1);
+					SetMaterial(3);
+				}
+				else if (sceneActorGameObjs[i]->team == 2)
+				{
+					SetMaterial(4);
 				}
 
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
