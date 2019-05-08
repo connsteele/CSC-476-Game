@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #define _USE_MATH_DEFINES //use to access M_PI
 #include "math.h"
 #include "glad/glad.h"
@@ -192,6 +193,30 @@ public:
 	float cTheta = 0;
 	bool mouseDown = false;
 
+    // See if player will hit object if they move
+	bool ComputePlayerHitObjects(vec3 NewCenter){
+	    for(int i = 0; i < AllGameObjects.size(); i++){
+	        // Dont check collision with self
+	        if(AllGameObjects[i] != possessedActor) {
+                bool collisionX = NewCenter.x + possessedActor->bboxSize.x >= AllGameObjects[i]->bboxCenter.x &&
+                                  AllGameObjects[i]->bboxCenter.x + AllGameObjects[i]->bboxSize.x >= NewCenter.x;
+                bool collisionY = NewCenter.y + possessedActor->bboxSize.y >= AllGameObjects[i]->bboxCenter.y &&
+                                  AllGameObjects[i]->bboxCenter.y + AllGameObjects[i]->bboxSize.y >= NewCenter.y;
+                bool collisionZ = NewCenter.z + possessedActor->bboxSize.z >= AllGameObjects[i]->bboxCenter.z &&
+                                  AllGameObjects[i]->bboxCenter.z + AllGameObjects[i]->bboxSize.z >= NewCenter.z;
+
+                bool HitResult = collisionX && collisionY && collisionZ;
+
+                if (HitResult) {
+                    return HitResult;
+                }
+            }
+
+	    }
+        return false;
+	}
+
+
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
 
@@ -245,23 +270,46 @@ public:
 		}
 		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
 		{
+		    float FixedHeight = 0.1f; // Used to lock vertical position of models
+		    possessedActor->position.y = 0.1f;
+
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				possessedActor->position += (camMove * followMoveSpd);
+			    vec3 newPosition = possessedActor-> position + (camMove * followMoveSpd);
+			    newPosition.y = FixedHeight;
+			    bool hitObject = ComputePlayerHitObjects(newPosition);
+			    if(!hitObject) {
+                    possessedActor->position = newPosition;
+                }
 			}
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				possessedActor->position -= (camMove * followMoveSpd);
+			    vec3 newPosition = possessedActor->position - (camMove * followMoveSpd);
+			    newPosition.y = FixedHeight;
+                bool hitObject = ComputePlayerHitObjects(newPosition);
+                if(!hitObject) {
+                    possessedActor->position = newPosition;
+                }
 			}
 			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				possessedActor->position += cross(up, camMove) * followMoveSpd;
+			    vec3 newPosition = possessedActor->position + cross(up, camMove) * followMoveSpd;
+			    newPosition.y = FixedHeight;
+                bool hitObject = ComputePlayerHitObjects(newPosition);
+                if(!hitObject) {
+                    possessedActor->position = newPosition;
+                }
 			}
 			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				possessedActor->position -= cross(up, camMove) * followMoveSpd;
+			    vec3 newPosition = possessedActor->position - cross(up, camMove) * followMoveSpd;
+			    newPosition.y = FixedHeight;
+                bool hitObject = ComputePlayerHitObjects(newPosition);
+                if(!hitObject) {
+
+                    possessedActor->position = newPosition;
+                }
 			}
-			possessedActor->position.y = 0.0f; // Lock the vertical position of the models
 		}
 		else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
 		{
@@ -1246,7 +1294,6 @@ public:
 			// If there is a collision with a moving object
 			if( !(sceneActorGameObjs[i]->hitByPlayer) && collisionX && collisionY && collisionZ){
 				printf("Camera Collision\n");
-				// sceneActorGameObjs[i]->velocity = 0.0f; // Stop the object you collide with
 				p1Collisions += 1; // Increment the number of objects the player has collided with
 				sceneActorGameObjs[i]->hitByPlayer = true;
 			}
