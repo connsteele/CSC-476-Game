@@ -39,8 +39,15 @@ GLuint p1_ibo_elements;
 vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
+// --- Variables to store textures into
+GLuint Tex_Floor;
+std::shared_ptr<Program> progTerrain;
+
+// --- Variables for Geometry
+GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
+
 //--- Vector of all actor game objects plus arrays of player units and enemy units
-vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs, AllGameObjects;
+vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs, AllGameObjects, usedRobotUnits, usedAlienUnits;
 vector<shared_ptr<GameObject> > robotUnits;
 vector<shared_ptr<GameObject> > alienUnits;
 
@@ -140,6 +147,10 @@ public:
 
 	//Assign who's turn it is. TODO: Make random at some point(?) for now start at 1
 	int whoseTurn = 1;
+
+	//Keep track of how many units remain for each team
+	int numAlienUnits = 4;
+	int numRobotUnits = 4;
 
 	WindowManager * windowManager = nullptr;
 
@@ -350,7 +361,7 @@ public:
 			glfwGetCursorPos(window, &posX, &posY);
 			cout << "Pos X " << posX << " Pos Y " << posY << endl;
 
-            vec3 ray_wor = GenerateRay(posX, posY); // Generate ray
+            vec3 ray_wor = GenerateRay(posX, posY); // Generate ray from mouse click
 
 
 			if(whoseTurn == 1) {
@@ -358,22 +369,33 @@ public:
                 TeamOneRayTrace(ray_wor, posX, posY);
             }
 			else{
+				//Perform team 2 ray trace operations
 			    TeamTwoRayTrace(ray_wor, posX, posY);
 			}
 
 			// Go back to the overhead view after shooting
 			if (!isOverheadView)
 			{
-				isOverheadView = true;
 
-
-				//Switch whose turn it is
 				if(whoseTurn == 1){
-				    whoseTurn = 2;
+					// if all units used clear array and allow them to be used again
+					if(usedRobotUnits.size() == numRobotUnits){
+						usedRobotUnits.clear();
+					}
+					// switch turn
+					whoseTurn = 2;
 				}
-				else{
-				    whoseTurn = 1;
+				else if(whoseTurn == 2){
+					// if all units used clear array and allow them to be used again
+					if(usedAlienUnits.size() == numAlienUnits){
+						usedAlienUnits.clear();
+					}
+					// switch turn
+					whoseTurn = 1;
 				}
+
+				//Snap user back to overhead view
+				isOverheadView = true;
 			}
 		}
 
@@ -442,8 +464,20 @@ public:
 
             if (isClicked && possessedActor == NULL && isOverheadView) {
 
-                robotUnits[i]->isPosessed = true;
-                possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
+				// Check if unit has been used (check if not empty first)
+				if(!usedRobotUnits.empty()){
+					if(find(usedRobotUnits.begin(), usedRobotUnits.end(), robotUnits[i]) == usedRobotUnits.end()){
+						robotUnits[i]->isPosessed = true;
+                		possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
+						usedRobotUnits.push_back(robotUnits[i]);
+					}
+				}
+				// Add first unit to array
+				else{
+					robotUnits[i]->isPosessed = true;
+                	possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
+					usedRobotUnits.push_back(robotUnits[i]);
+				}
 
             }
             // }
@@ -519,8 +553,21 @@ public:
 
             if (isClicked && possessedActor == NULL && isOverheadView) {
 
-                alienUnits[i]->isPosessed = true;
-                possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
+				// check if clicked object is already in array (check if empty first)
+                if(!usedAlienUnits.empty()){
+					if(find(usedAlienUnits.begin(), usedAlienUnits.end(), alienUnits[i]) == usedAlienUnits.end()){
+						alienUnits[i]->isPosessed = true;
+                		possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
+						usedAlienUnits.push_back(alienUnits[i]);
+
+					}
+				}
+				// Add first unit to array
+				else{
+					alienUnits[i]->isPosessed = true;
+                	possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
+					usedAlienUnits.push_back(alienUnits[i]);
+				}
 
             }
 
@@ -701,7 +748,8 @@ public:
 		// Enable z-buffer test.
 		glEnable(GL_DEPTH_TEST);
 
-		// Initialize the GLSL program.
+		//----- Setup Shaders -----
+		// Setup the default shader program
 		prog = make_shared<Program>();
 		prog->setVerbose(true);
 		prog->setShaderNames(
@@ -725,43 +773,26 @@ public:
 		prog->addUniform("lightSource"); //lighting uniform
 		prog->addUniform("hit"); //Uniform for determining color based on hit or not
 
-		//create two frame buffer objects to toggle between
-		glGenFramebuffers(2, frameBuf);
-		glGenTextures(2, texBuf);
-		glGenRenderbuffers(1, &depthBuf);
-		createFBO(frameBuf[0], texBuf[0]);
-
-		//set up depth necessary as rendering a mesh that needs depth test
-		glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
-
-		//more FBO set up
-		GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-		glDrawBuffers(1, DrawBuffers);
-
-		//create another FBO so we can swap back and forth
-		createFBO(frameBuf[1], texBuf[1]);
-		//this one doesn't need depth
-
-		//set up the shaders to blur the FBO just a placeholder pass thru now
-		//next lab modify and possibly add other shaders to complete blur
-		texProg = make_shared<Program>();
-		texProg->setVerbose(true);
-		texProg->setShaderNames(
-			resourceDirectory + "/mirror_vert.glsl",
-			resourceDirectory + "/mirror_frag.glsl");
-		if (!texProg->init())
+		// Setup a terrain shader program
+		progTerrain = make_shared<Program>();
+		progTerrain->setVerbose(true);
+		progTerrain->setShaderNames(
+			resourceDirectory + "/terrain_vert.glsl",
+			resourceDirectory + "/terrain_frag.glsl");
+		if (!progTerrain->init())
 		{
 			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
 			exit(1);
 		}
-		texProg->addUniform("tex");
-		texProg->addAttribute("vertPos");
-		texProg->addUniform("dir");
-		texProg->addUniform("P");
-		texProg->addUniform("M");
-		texProg->addUniform("V");
+		progTerrain->addUniform("P");
+		progTerrain->addUniform("M");
+		progTerrain->addUniform("V");
+		progTerrain->addUniform("eye");
+		progTerrain->addAttribute("vertPos");
+		progTerrain->addAttribute("vertNor");
+		progTerrain->addAttribute("vertTex");
+		progTerrain->addUniform("lightSource"); //lighting uniform
+
 	}
 	
 	void initPlayerBbox()
@@ -819,7 +850,7 @@ public:
 
 	void initGeom(const std::string& resourceDirectory)
 	{
-
+		// ------ Load Models --------
 		//Initialize the geometry to render a quad to the screen
 		initQuad();
 
@@ -852,12 +883,96 @@ public:
 		// Setup player bbox
 		initPlayerBbox();
 
-		//---  Load the image of the map file
-		string str = resourceDirectory + "/images/Map1.bmp";
+		// ---------- Setup Other Geometery -----------
+		//// --- Setup the Geometry for a cube (used as tile pieces for the level
+		//GLfloat cube_vertices[] = {
+		//	// front
+		//	-1.0, 0.0,  1.0,//LD
+		//	1.0, 0.0,  1.0,//RD
+		//	1.0,  2.0,  1.0,//RU
+		//	-1.0,  2.0,  1.0,//LU
+		//};
+		//// Make the cubes 1x1
+		//for (int i = 0; i < 12; i++)
+		//	cube_vertices[i] *= 0.5;
+		////actually memcopy the data - only do this once
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_DYNAMIC_DRAW);
+		////we need to set up the vertex array
+		//glEnableVertexAttribArray(0);
+		////key function to get up how many elements to pull out at a time (3)
+		//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+		////color
+		//GLfloat cube_norm[] = {
+		//	// front colors
+		//	0.0, 0.0, 1.0,
+		//	0.0, 0.0, 1.0,
+		//	0.0, 0.0, 1.0,
+		//	0.0, 0.0, 1.0,
+
+		//};
+		//glGenBuffers(1, &bufCubeNormal);
+		////set the current state to focus on our vertex buffer
+		//glBindBuffer(GL_ARRAY_BUFFER, bufCubeNormal);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(cube_norm), cube_norm, GL_STATIC_DRAW);
+		//glEnableVertexAttribArray(1);
+		//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+		////color
+		//glm::vec2 cube_tex[] = {
+		//	// front colors
+		//	glm::vec2(0.0, 1.0),
+		//	glm::vec2(1.0, 1.0),
+		//	glm::vec2(1.0, 0.0),
+		//	glm::vec2(0.0, 0.0),
+
+		//};
+		//glGenBuffers(1, &bufCubeTexture);
+		////set the current state to focus on our vertex buffer
+		//glBindBuffer(GL_ARRAY_BUFFER, bufCubeTexture);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(cube_tex), cube_tex, GL_STATIC_DRAW);
+		//glEnableVertexAttribArray(2);
+		//glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+		//glGenBuffers(1, &bufCubeIndex);
+		////set the current state to focus on our vertex buffer
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufCubeIndex);
+		//GLushort cube_elements[] = {
+
+		//	// front
+		//	0, 1, 2,
+		//	2, 3, 0,
+		//};
+		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_elements), cube_elements, GL_STATIC_DRAW);
+		//glBindVertexArray(0);
+
+
+		// ---------- Load Images-----------
+
+		//--- Load the image of the floor
+		string str = resourceDirectory + "/images/scifiFloor.bmp";
 		char filepath[1000]; // Char array
 		int width, height, channels;
 		strcpy(filepath, str.c_str()); // copy the string into the char array
-		unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+		unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Floor);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		// Send the texture to the shader
+		GLuint texLocation = glGetUniformLocation(progTerrain->pid, "tex");
+		//glUseProgram(progTerrain->pid);
+		//glUniform1i(texLocation, 0);
+
+
+		//---  Load the image of the map file
+		str = resourceDirectory + "/images/Map1.bmp";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
 		// dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
 		//-- Map Tile Properties that never change
 		glm::vec3 tileOrientation = glm::vec3(0.0f, 0.0f, 0.0f); // Current tile's orientation, Will always be vec3(0.0f)
@@ -878,7 +993,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -887,7 +1002,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -896,7 +1011,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, 0.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -905,7 +1020,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -914,13 +1029,13 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -1290,7 +1405,7 @@ public:
 
 	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P)
 	{
-		prog->bind();
+		progTerrain->bind();
 
 		
 		for (int i = 0; i < sceneTerrainObjs.size(); i++)
@@ -1304,40 +1419,50 @@ public:
 			// If terrain
 			if (sceneTerrainObjs[i]->isGroundTile)
 			{
-				SetMaterial(1);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				//SetMaterial(1);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isUpperTile)
 			{
-				SetMaterial(2);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				//SetMaterial(2);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isCoverTile)
 			{
-				SetMaterial(3);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				//SetMaterial(3);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isJumpTile)
 			{
-				SetMaterial(4);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				//SetMaterial(4);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isUpperCoverTile)
 			{
-				SetMaterial(3);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				//SetMaterial(3);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
-			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniformMatrix4fv(progTerrain->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(progTerrain->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(progTerrain->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+			glUniformMatrix4fv(progTerrain->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
-			glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
+			glUniform3f(progTerrain->getUniform("lightSource"), 0, 88, 10);
 			sceneTerrainObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
 			M->popMatrix();
 		}
 
-		prog->unbind();
+		progTerrain->unbind();
 	}
 
 	void interpolateCamera(float interp)
