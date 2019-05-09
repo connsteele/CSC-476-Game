@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <ctime>
 #define _USE_MATH_DEFINES //use to access M_PI
 #include "math.h"
 #include "glad/glad.h"
@@ -59,6 +60,11 @@ float deltaTime = 0.0f, lastTime = glfwGetTime();
 float lastFrame = 0.0f;
 int nbFrames = 0;
 float elapsedTime = 0.0f;
+
+//Turn Time
+time_t turnStartTime = 0;
+//durration of possesion in seconds
+int turnLength = 10;
 
 bool isCaptureCursor = false;
 
@@ -425,26 +431,7 @@ public:
 			// Go back to the overhead view after shooting
 			if (!isOverheadView)
 			{
-
-				if(whoseTurn == 1){
-					// if all units used clear array and allow them to be used again
-					if(usedRobotUnits.size() == numRobotUnits){
-						usedRobotUnits.clear();
-					}
-					// switch turn
-					whoseTurn = 2;
-				}
-				else if(whoseTurn == 2){
-					// if all units used clear array and allow them to be used again
-					if(usedAlienUnits.size() == numAlienUnits){
-						usedAlienUnits.clear();
-					}
-					// switch turn
-					whoseTurn = 1;
-				}
-
-				//Snap user back to overhead view
-				isOverheadView = true;
+				switchTurn();
 			}
 		}
 
@@ -1604,6 +1591,42 @@ public:
 			printf("THE ROBOTS HAVE WON!\n");
 
 		}
+
+		// Checks if in FPS mode
+		if (!isOverheadView) {
+			//turnStartTime == 0 means that it is the start of a turn
+			if (turnStartTime == 0) {
+				turnStartTime = time(NULL);
+			}
+			else if (time(NULL) - turnStartTime > turnLength)
+			{
+				switchTurn();
+			}
+		}
+	}
+
+	void switchTurn() {
+		if (whoseTurn == 1) {
+			// if all units used clear array and allow them to be used again
+			if (usedRobotUnits.size() == numRobotUnits) {
+				usedRobotUnits.clear();
+			}
+			// switch turn
+			whoseTurn = 2;
+		}
+		else if (whoseTurn == 2) {
+			// if all units used clear array and allow them to be used again
+			if (usedAlienUnits.size() == numAlienUnits) {
+				usedAlienUnits.clear();
+			}
+			// switch turn
+			whoseTurn = 1;
+		}
+
+		//Snap user back to overhead view
+		isOverheadView = true;
+		//reset turn timer
+		turnStartTime = 0;
 	}
 
 	void render()
