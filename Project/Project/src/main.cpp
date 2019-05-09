@@ -42,7 +42,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan;
 std::shared_ptr<Program> progTerrain;
 
 // --- Variables for Geometry
@@ -91,43 +91,7 @@ float orbRotate = 0.0;
 float smallRotate = 0.0;
 float bunnyRotate = 0.0;
 
-// Class imported from Connor's time in CSC 474
-//class camera
-//{
-//public:
-//	glm::vec3 pos, rot;
-//	int w, a, s, d;
-//	camera()
-//	{
-//		w = a = s = d = 0;
-//		pos = rot = glm::vec3(0, 0, 0);
-//	}
-//	glm::mat4 process(double ftime)
-//	{
-//		float speed = 0;
-//		if (w == 1)
-//		{
-//			speed = 10 * ftime;
-//		}
-//		else if (s == 1)
-//		{
-//			speed = -10 * ftime;
-//		}
-//		float yangle = 0;
-//		if (a == 1)
-//			yangle = -3 * ftime;
-//		else if (d == 1)
-//			yangle = 3 * ftime;
-//		rot.y += yangle;
-//		glm::mat4 R = glm::rotate(glm::mat4(1), rot.y, glm::vec3(0, 1, 0));
-//		glm::vec4 dir = glm::vec4(0, 0, speed, 1);
-//		dir = dir * R;
-//		pos += glm::vec3(dir.x, dir.y, dir.z);
-//		glm::mat4 T = glm::translate(glm::mat4(1), pos);
-//		glm::mat4 Rx = glm::rotate(glm::mat4(1), rot.x, glm::vec3(1, 0, 0)); //Tilt the camera on x-axis based on rot.x, set in initGeom
-//		return Rx * R * T;
-//	}
-//};
+
 class Application : public EventCallbacks
 {
 
@@ -158,6 +122,12 @@ public:
 	//Keep track of how many units remain for each team
 	int numAlienUnits = 4;
 	int numRobotUnits = 4;
+	
+
+	//Player Gravity Variables
+	float acceleration = -9.8f;
+	float velocity = 0.0f;
+	
 
 	WindowManager * windowManager = nullptr;
 
@@ -276,13 +246,15 @@ public:
 		}
 		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
 		{
-		    float FixedHeight = 0.1f; // Used to lock vertical position of models
-		    possessedActor->position.y = 0.1f;
+		    //float FixedHeight = 0.1f; // Used to lock vertical position of models
+		    // possessedActor->position.y = 0.1f;
+
+			float CurrentYPosition = possessedActor->position.y;
 
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 			    vec3 newPosition = possessedActor-> position + (camMove * followMoveSpd);
-			    newPosition.y = FixedHeight;
+				newPosition.y = CurrentYPosition;//+ 0.1f;
 			    bool hitObject = ComputePlayerHitObjects(newPosition);
 			    if(!hitObject) {
                     possessedActor->position = newPosition;
@@ -291,7 +263,7 @@ public:
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 			    vec3 newPosition = possessedActor->position - (camMove * followMoveSpd);
-			    newPosition.y = FixedHeight;
+			    newPosition.y = CurrentYPosition;// + 0.1f;
                 bool hitObject = ComputePlayerHitObjects(newPosition);
                 if(!hitObject) {
                     possessedActor->position = newPosition;
@@ -300,7 +272,7 @@ public:
 			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 			    vec3 newPosition = possessedActor->position + cross(up, camMove) * followMoveSpd;
-			    newPosition.y = FixedHeight;
+			    newPosition.y = CurrentYPosition;// + 0.1f;
                 bool hitObject = ComputePlayerHitObjects(newPosition);
                 if(!hitObject) {
                     possessedActor->position = newPosition;
@@ -309,7 +281,7 @@ public:
 			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 			    vec3 newPosition = possessedActor->position - cross(up, camMove) * followMoveSpd;
-			    newPosition.y = FixedHeight;
+			    newPosition.y = CurrentYPosition;// + 0.1f;
                 bool hitObject = ComputePlayerHitObjects(newPosition);
                 if(!hitObject) {
 
@@ -321,44 +293,28 @@ public:
 		{
 			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				//curCamCenter.x -= (camMove.x * overheadMoveSpd);
-				//curCamCenter.z -= (camMove.z * overheadMoveSpd);
+				// Forward
 				oCamEye.x += (camMove.x * overheadMoveSpd);
 				oCamEye.z += (camMove.z * overheadMoveSpd);
-
-				/*if (oCamEye.y <= 0)
-				{
-					oCamEye.y = 0;
-				}*/
 
 			}
 			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
-				//Left
-				//curCamCenter -= cross(up, camMove) * overheadMoveSpd;
+				// Left
 				oCamEye += cross(up, camMove) * overheadMoveSpd;
 
 			}
 			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 				//Right
-				//curCamCenter += cross(up, camMove) * overheadMoveSpd;
 				oCamEye -= cross(up, camMove) * overheadMoveSpd;
 
 			}
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
 				// Backwards
-				//curCamCenter.x += (camMove.x * overheadMoveSpd);
-				//curCamCenter.z += (camMove.z * overheadMoveSpd);
 				oCamEye.x -= (camMove.x * overheadMoveSpd);
 				oCamEye.z -= (camMove.z * overheadMoveSpd);
-
-				/*if (curCamEye.y <= 0)
-				{
-					curCamEye.y = 0;
-				}
-*/
 			}
 		}
 
@@ -372,14 +328,7 @@ public:
 			else
 			{
 				isOverheadView = true;
-			}
-			
-			// isOverheadView = !isOverheadView;
-			/*if (!isOverheadView)
-			{
-				isOverheadView = true;
-			}*/
-			
+			}			
 		}
 		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
 		{
@@ -516,7 +465,6 @@ public:
 				}
 
             }
-            // }
 
         }
 
@@ -783,6 +731,8 @@ public:
 		glClearColor(.02f, .02f, .02f, 1.0f);
 		// Enable z-buffer test.
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
 
 		//----- Setup Shaders -----
 		// Setup the default shader program
@@ -920,67 +870,7 @@ public:
 		initPlayerBbox();
 
 		// ---------- Setup Other Geometery -----------
-		//// --- Setup the Geometry for a cube (used as tile pieces for the level
-		//GLfloat cube_vertices[] = {
-		//	// front
-		//	-1.0, 0.0,  1.0,//LD
-		//	1.0, 0.0,  1.0,//RD
-		//	1.0,  2.0,  1.0,//RU
-		//	-1.0,  2.0,  1.0,//LU
-		//};
-		//// Make the cubes 1x1
-		//for (int i = 0; i < 12; i++)
-		//	cube_vertices[i] *= 0.5;
-		////actually memcopy the data - only do this once
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_DYNAMIC_DRAW);
-		////we need to set up the vertex array
-		//glEnableVertexAttribArray(0);
-		////key function to get up how many elements to pull out at a time (3)
-		//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-		////color
-		//GLfloat cube_norm[] = {
-		//	// front colors
-		//	0.0, 0.0, 1.0,
-		//	0.0, 0.0, 1.0,
-		//	0.0, 0.0, 1.0,
-		//	0.0, 0.0, 1.0,
-
-		//};
-		//glGenBuffers(1, &bufCubeNormal);
-		////set the current state to focus on our vertex buffer
-		//glBindBuffer(GL_ARRAY_BUFFER, bufCubeNormal);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(cube_norm), cube_norm, GL_STATIC_DRAW);
-		//glEnableVertexAttribArray(1);
-		//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-		////color
-		//glm::vec2 cube_tex[] = {
-		//	// front colors
-		//	glm::vec2(0.0, 1.0),
-		//	glm::vec2(1.0, 1.0),
-		//	glm::vec2(1.0, 0.0),
-		//	glm::vec2(0.0, 0.0),
-
-		//};
-		//glGenBuffers(1, &bufCubeTexture);
-		////set the current state to focus on our vertex buffer
-		//glBindBuffer(GL_ARRAY_BUFFER, bufCubeTexture);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(cube_tex), cube_tex, GL_STATIC_DRAW);
-		//glEnableVertexAttribArray(2);
-		//glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-		//glGenBuffers(1, &bufCubeIndex);
-		////set the current state to focus on our vertex buffer
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufCubeIndex);
-		//GLushort cube_elements[] = {
-
-		//	// front
-		//	0, 1, 2,
-		//	2, 3, 0,
-		//};
-		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_elements), cube_elements, GL_STATIC_DRAW);
-		//glBindVertexArray(0);
-
+		
 
 		// ---------- Load Images-----------
 
@@ -999,10 +889,46 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
-		// Send the texture to the shader
-		GLuint texLocation = glGetUniformLocation(progTerrain->pid, "tex");
-		//glUseProgram(progTerrain->pid);
-		//glUniform1i(texLocation, 0);
+
+
+		str = resourceDirectory + "/images/scifiWall.jpg";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Wall);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/hexPlating.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Hex);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/fan.jpg";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Fan);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Fan);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
 
 
 		//---  Load the image of the map file
@@ -1076,6 +1002,28 @@ public:
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
 				}
+				else if ((red == 255) && (green == 0) && (blue == 0)) // If the color is red boundry tile
+				{
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale / 2.0f, horizontalOffset - i * tileScale);
+					// Make a cube game object and push it back into the array so it is drawn
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
+
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale / 2.0f, horizontalOffset - i * tileScale);
+					// Make a cube game object and push it back into the array so it is drawn
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
+					AllGameObjects.push_back(terrainTemp);
+
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, 3.0f * tileScale / 2.0f, horizontalOffset - i * tileScale);
+					// Make a cube game object and push it back into the array so it is drawn
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
+					AllGameObjects.push_back(terrainTemp);
+				}
 				
 			}
 		}
@@ -1089,40 +1037,41 @@ public:
 		// groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, orientation, false, 0);
 
 
-		// Setup temp player bunny
-		position = vec3(0.0f, 0.0f, -25.0f);
+		// Setup the 1st team 1 robot
+		position = vec3(0.0f, 0.1f, -30.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
         AllGameObjects.push_back(PlayerBun);
 
-		// Setup the second robot
-		position = vec3(20.0f, 0.0f, -25.0f);
+		// Setup the 2nd team 1 robot
+		position = vec3(5.0f, 0.1f, -30.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
         AllGameObjects.push_back(NPCBun);
 
-		// Setup the third robot
-		position = vec3(-20.0f, 0.0f, -25.0f);
+		// Setup the 3rd team 1 robot
+		position = vec3(-10.0f, 1.1f, -30.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
         AllGameObjects.push_back(robot3);
 		
-		// Setup the forth robot
-		position = vec3(30.0f, 0.0f, -25.0f);
+		// Setup the 4th team 1 robot
+		position = vec3(20.0f, 1.1f, -30.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
         AllGameObjects.push_back(robot4);
 
-		// Setup the first alien
-		position = vec3(20.0f, 0.0f, 25.0f);
+		// ---- Setup the team 2 robots ----
+		// Setup the 1st team 2 robot
+		position = vec3(0.0f, 0.1f, 30.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien0);
@@ -1130,78 +1079,29 @@ public:
         AllGameObjects.push_back(alien0);
 		
 
-		// Setup the 2nd alien
-		position = vec3(10.0f, 0.0f, 20.0f);
+		// Setup the 2nd team 2 robot
+		position = vec3(5.0f, 0.1f, 30.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
         AllGameObjects.push_back(alien1);
 
-		// Setup the 3rd alien
-		position = vec3(10.0f, 0.0f, 15.0f);
+		// Setup the 3rd team 2 robot
+		position = vec3(-10.0f, 1.1f, 30.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
         AllGameObjects.push_back(alien2);
 
-		// Setup the 4th alien
-		position = vec3(15.0f, 0.0f, 10.0f);
+		// Setup the 4th team 2 robot
+		position = vec3(20.0f, 1.1f, 30.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 		AllGameObjects.push_back(alien3);
-
-		// ---TEMPORARY CUBE TERRAIN -- 
-		/*position = glm::vec3(0.0f, 0.0f, 0.0f);
-		velocity = 0.0f;
-		orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		shared_ptr<GameObject> terrainOne = make_shared<GameObject>("terrain1", cube, resourceDirectory, prog, position, orientation, false, 0);
-		sceneActorGameObjs.push_back(terrainOne);
-
-		position = glm::vec3(2.5f, 0.0f, 0.0f);
-		velocity = 0.0f;
-		orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		shared_ptr<GameObject> terrainTwo = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, orientation, false, 0);
-		sceneActorGameObjs.push_back(terrainTwo);*/
-
-		// Randomized Cubes
-		/*for (int i = 0; i < 20; i++) {
-			float randX = -40.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (40.0f - -40.0f)));
-			float randZ = -60.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (60.0f - -60.0f)));
-
-
-			position = glm::vec3(randX, 0.0f, randZ);
-			orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-			shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, orientation, false, 0);
-			sceneActorGameObjs.push_back(terrainTemp);
-
-		}*/
-
-		// Cover Cubes
-		//setupCoverCubeLocations(); // Push back the location of scene cubes into a vector
-		//// Render the left cubes
-		//for (int i = 0; i < coverCubesLocs.size() ; i++)
-		//{
-		//	position = coverCubesLocs[i];
-		//	velocity = 0.0f;
-		//	orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		//	shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
-		//	sceneActorGameObjs.push_back(terrainTemp);
-		//}
-		//// Render the right cubes
-		//for (int i = 0; i < coverCubesLocs.size(); i++)
-		//{
-		//	position = coverCubesLocs[i];
-		//	position.z *= -1.f; // flip the horizontal coordinates of the cubes
-		//	velocity = 0.0f;
-		//	orientation = glm::vec3(0.0f, 0.0f, 0.0f);
-		//	shared_ptr<GameObject> terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, prog, position, velocity, orientation, false, 0);
-		//	sceneActorGameObjs.push_back(terrainTemp);
-		//}
-
 	}
 
 	/**** geometry set up for a quad *****/
@@ -1254,39 +1154,14 @@ public:
 		}
 	}
 
-
 	void renderPlayerBbox(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView)
 	{
 		prog->bind();
 		// Recompute the position of the box b4 drawing it
 
-		/*if (overheadView)
-		{
-			p1_bboxCenter = oCamCenter;
-		}
-		else
-		{
-			p1_bboxCenter = pCamCenter;
-		}
-		*/
 		p1_bboxCenter = curCamCenter;
 		p1_bboxTransform = translate(glm::mat4(1), p1_bboxCenter) * glm::scale(glm::mat4(1), p1_bboxSize);
 
-		//Check Collisions, Might disable this for performance increase
-		for(int i = 0; i < sceneActorGameObjs.size(); i++){
-			bool collisionX = p1_bboxCenter.x + p1_bboxSize.x >= sceneActorGameObjs[i]->bboxCenter.x && sceneActorGameObjs[i]->bboxCenter.x + sceneActorGameObjs[i]->bboxSize.x >= p1_bboxCenter.x;
-			bool collisionY = p1_bboxCenter.y + p1_bboxSize.y >= sceneActorGameObjs[i]->bboxCenter.y && sceneActorGameObjs[i]->bboxCenter.y + sceneActorGameObjs[i]->bboxSize.y >= p1_bboxCenter.y;
-			bool collisionZ = p1_bboxCenter.z + p1_bboxSize.z >= sceneActorGameObjs[i]->bboxCenter.z && sceneActorGameObjs[i]->bboxCenter.z + sceneActorGameObjs[i]->bboxSize.z >= p1_bboxCenter.z;
-
-			// If there is a collision with a moving object
-			if( !(sceneActorGameObjs[i]->hitByPlayer) && collisionX && collisionY && collisionZ){
-				printf("Camera Collision\n");
-				p1Collisions += 1; // Increment the number of objects the player has collided with
-				sceneActorGameObjs[i]->hitByPlayer = true;
-			}
-
-			//return collisionX && collisionY && collisionZ;
-		}
 
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(p1_bboxTransform));
 		glBindBuffer(GL_ARRAY_BUFFER, p1_vbo_vertices);
@@ -1343,7 +1218,6 @@ public:
 		return;
 	}
 
-
 	void renderWorldBox() {
 
 	}
@@ -1358,41 +1232,13 @@ public:
 
 	void checkAllGameObjects()
 	{
-		
-		//for (int i = 0; i < sceneActorGameObjs.size(); i++)
-		//{
-		//	for (int j = i + 1; j < sceneActorGameObjs.size(); j++) {
-		//		bool wasCollision = checkCollisions(sceneActorGameObjs[i], sceneActorGameObjs[j]);
-
-		//		if (wasCollision) {
-		//			//printf("Collision occured\n");
-		//			sceneActorGameObjs[i]->velocity = 0;
-		//			sceneActorGameObjs[j]->velocity = 0;
-		//		}
-		//	}
-		//}
+		// Do logic here!
 	}
 
-	
-
 	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView, int offsetX, int offsetZ)
-	{
-		//vec3 camLoc = curCamEye;
-		//if (overheadView)
-		//{
-		//	camLoc = oCamEye; // Change to use oCampCamEye
+	{	
 
-		//}
-		//else // Possession follow cam
-		//{
-		//	camLoc = pCamEye;
-		//}
-
-		
 		prog->bind(); // Bind the Simple Shader
-
-
-		// 
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
 
 
@@ -1466,31 +1312,37 @@ public:
 			else if (sceneTerrainObjs[i]->isUpperTile)
 			{
 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				glBindTexture(GL_TEXTURE_2D, Tex_Hex);
 				//SetMaterial(2);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isCoverTile)
 			{
 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				glBindTexture(GL_TEXTURE_2D, Tex_Wall);
 				//SetMaterial(3);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isJumpTile)
 			{
 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				glBindTexture(GL_TEXTURE_2D, Tex_Fan);
 				//SetMaterial(4);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
 			else if (sceneTerrainObjs[i]->isUpperCoverTile)
 			{
 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+				glBindTexture(GL_TEXTURE_2D, Tex_Wall);
 				//SetMaterial(3);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
+			else if (sceneTerrainObjs[i]->isBoundingTile)
+			{
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+			}
+
 			glUniformMatrix4fv(progTerrain->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(progTerrain->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 			glUniform3f(progTerrain->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
@@ -1522,20 +1374,7 @@ public:
 					possessedActor->isRender = false;
 				}
 			}
-			//for (int i = 0; i < sceneActorGameObjs.size(); i++)
-			//{
-			//	if ((sceneActorGameObjs[i])->isPosessed == true)
-			//	{
-			//		printf("Using a possessed object's location");
-			//		GameObject posActor = *sceneActorGameObjs[i];
-			//		pCamEye = posActor.position; // use the position of the game object with an offset
-			//		if (interp > 0.9f) // Turn of the rendering of the possessed object
-			//		{
-			//			sceneActorGameObjs[i]->isRender = false;
-			//		}
-			//		break;
-			//	}
-			//}
+
 
 			// Compute 
 			float newx = ((1.0f - interp) * curCamEye.x) + (interp * pCamEye.x);
@@ -1552,26 +1391,17 @@ public:
 				((1.0f - interp) * oy ) + (interp * y),
 				((1.0f - interp) * oz ) + (interp * z));
 		}
-		else
-		{
-			// Compute an interpolated camera
-			/*float newx = ((1.0f - interp) * curCamEye.x) + (interp * oCamEye.x);
-			float newy = ((1.0f - interp) * curCamEye.y) + (interp * oCamEye.y);
-			float newz = ((1.0f - interp) * curCamEye.z) + (interp * oCamEye.z);
-			curCamEye = vec3(newx, newy, newz);
 
-			newx = ((1.0f - interp) * (curCamEye.x + (pCamEye.x + (radius * cos(phi)*cos(theta))))) + (interp * (oCamEye.x + ox));
-			newy = ((1.0f - interp) * (curCamEye.y + (radius * sin(phi)))) + (interp * (oCamEye.y + oy));
-			newz = ((1.0f - interp) * (curCamEye.z + (pCamEye.z + (radius * cos(phi)*sin(theta))))) + (interp * (oCamEye.z + oz));
-			curCamCenter = vec3(newx, newy, newz);
+		return;
+	}
 
-			camMove = vec3(((1.0f - interp) * x) + (interp * ox),
-				((1.0f - interp) * y ) + (interp * oy),
-				((1.0f - interp) * z ) + (interp * oz));*/
+	void jumpPad(shared_ptr<GameObject> currObjectPointer) {
+		vec3 orient;
+		orient.x = radius * cos(phi)*cos(theta);
+		orient.y = radius * sin(phi);
+		orient.z = radius * cos(phi)*sin(theta);
 
-			// Immediately swap camera position
-			
-		}
+
 	}
 
 	void updateGameLogic()
@@ -1629,6 +1459,38 @@ public:
 		turnStartTime = 0;
 	}
 
+	bool GravityGroundCollision(vec3 futurePosition){
+		if(possessedActor != NULL){
+
+			//Check Collisions, Might disable this for performance increase
+			for(int i = 0; i < sceneTerrainObjs.size(); i++){
+				bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= sceneTerrainObjs[i]->bboxCenter.x && sceneTerrainObjs[i]->bboxCenter.x + sceneTerrainObjs[i]->bboxSize.x >= futurePosition.x;
+				bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= sceneTerrainObjs[i]->bboxCenter.y && sceneTerrainObjs[i]->bboxCenter.y + sceneTerrainObjs[i]->bboxSize.y >= futurePosition.y;
+				bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= sceneTerrainObjs[i]->bboxCenter.z && sceneTerrainObjs[i]->bboxCenter.z + sceneTerrainObjs[i]->bboxSize.z >= futurePosition.z;
+
+				if(collisionX && collisionY && collisionZ){
+					return collisionX && collisionY && collisionZ;
+				}
+			}
+			return false;
+		}
+	}
+
+	void ApplyGravity()
+	{
+		if(possessedActor != NULL)
+		{
+			float NewY = possessedActor->position.y + (velocity * deltaTime);
+			vec3 NewPosition = vec3(possessedActor->position.x, NewY, possessedActor->position.z);
+			if(!GravityGroundCollision(NewPosition)){
+				possessedActor->position.y = NewY;
+			}
+			else{
+				velocity = 0.0f;
+			}
+		}
+	}
+
 	void render()
 	{
 		// Get current frame buffer size.
@@ -1642,7 +1504,7 @@ public:
 		nbFrames += 1;
 		// ---- At intervals print out information to the console
 		if (currentTime - lastTime >= 1.0 ) {
-			//printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
+			printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
 			//printf("Objects on the ground: %d\n", sceneActorGameObjs.size()); // Print out the number of objects in the game
 			//printf("Objects Collided with %d\n\n", p1Collisions);
 			nbFrames = 0;
@@ -1651,34 +1513,7 @@ public:
 
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		elapsedTime += deltaTime;
-
-
-		//--TODO: Move maybe. Spawns random bunnies
-		//bunSpawn -= deltaTime;
-		//if (bunSpawn <= 0 && (sceneActorGameObjs.size() < 40)) // Spawn a bunny if the timer is up and there are less than 25 in the scene
-		//{
-		//	printf("spawn bunny\n");
-		//	bunSpawn = bunSpawnReset;
-		//	//Template for random float
-		//	//float r3 = LO + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(HI-LO)));
-		//	float randX = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
-		//	float randZ = -30.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (30.0f - -30.0f)));
-		//	float randVel = 1.0f + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (8.0f - 1.0f)));
-		//	
-		//	string BunName = "bunBun" + to_string(bunbunCounter);
-
-		//	vec3 position = vec3(randX, 0.0f, randZ);
-
-		//	vec3 orientation = vec3(0.0f, 0.0f, 1.0f);
-
-		//	shared_ptr<GameObject> newBunny = make_shared<GameObject>(BunName, bunnyShape, "../resources/", prog, position, randVel, orientation, true);
-		//	sceneActorGameObjs.push_back(newBunny);
-
-		//}
-
-
-		
+		elapsedTime += deltaTime;		
 
 
 		// Clear framebuffer.
@@ -1714,11 +1549,6 @@ public:
 			curCamCenter = curCamEye + lookDir;
 			camMove = vec3(ox, oy, oz);
 		}
-		//oCamCenter = oCamEye; // Trying
-
-
-		//for(int i = 0; i < sceneActorGameObjs.size(); )
-
 
 		// Check if the camera should be interpolated
 		static float camInterp = 0.0f;
@@ -1733,7 +1563,7 @@ public:
 
 		if (camInterp <= 1.0f && camUpdate) // interpolate from the overhead camera to the possesd gameobjects view
 		{
-			camInterp += 0.01f;
+			camInterp += 1.f * deltaTime;
 			interpolateCamera(camInterp);
 		}
 		else if (isOverheadView) // Snap from the players camera to the ovehead view
@@ -1751,19 +1581,6 @@ public:
 				possessedActor = NULL; // Remove the possessed actor
 			}
 		}
-		//else if (!isOverheadView)
-		//{
-		//	x = radius * cos(phi)*cos(theta);
-		//	y = radius * sin(phi);
-		//	z = radius * cos(phi)*sin(theta);
-		//	//printf("rots phi: %d, theta: %d \n", phi, theta);
-		//	curCamCenter = curCamEye + vec3(x, y, z);
-		//	camMove = vec3(x, y, z);
-		//}
-		/*if (!camUpdate && !isOverheadView)
-		{
-			isOverheadView = true;
-		}*/
 
 		// Create the matrix stacks
 		auto P = make_shared<MatrixStack>();
@@ -1782,10 +1599,14 @@ public:
 		M->pushMatrix(); // Matrix for the Scene
 		// renderGroundPlane(M, P, isOverheadView); //draw the ground plane
 
+		//acceleration = -9.8f;
+
 		// Update the position of the players bbox
 		renderPlayerBbox(M, P, isOverheadView);
 
-		//renderAnimSphere(M, P, 0, 0, 0); //draw the hierarchical modeled animated spheres
+		velocity += deltaTime * acceleration;
+
+		ApplyGravity();
 
 		M->pushMatrix();
 		//checkAllGameObjects();

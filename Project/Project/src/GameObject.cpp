@@ -24,6 +24,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isCoverTile = false;
 	this->isJumpTile = false;
 	this->isUpperCoverTile = false;
+	this->isBoundingTile = false;
 	this->isStaticGeom = isStaticGeom;
 
 	this->team = team;
@@ -44,9 +45,7 @@ void GameObject::DrawGameObj()
 
 void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up)
 { 
-	// elapsedTime += dt;
-
-	DoCollisions(M);
+	// DoCollisions(M);
 
 	//-- Calculate new position and translate the model
 	position += 0.0f * orientation * dt;
@@ -66,9 +65,6 @@ void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr
 	//--- Recompute bbox center and transformation matrix
 	bboxCenter = position; // used to be glm::vec3((min_x + max_x) / 2, (min_y + max_y) / 2, (min_z + max_z) / 2)
 	bboxTransform = glm::translate(glm::mat4(1), bboxCenter) * glm::scale(glm::mat4(1), bboxSize);
-	
-	
-
 }
 
 // Check for exiting ground plane, if so flip the orientation of the bunny
