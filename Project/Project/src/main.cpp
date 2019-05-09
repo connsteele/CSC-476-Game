@@ -73,7 +73,7 @@ float elapsedTime = 0.0f;
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 50;
+int turnLength = 11; // use 11
 
 bool isCaptureCursor = false;
 
@@ -370,6 +370,7 @@ public:
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
 		{
+			isCaptureCursor = !isCaptureCursor;
 			if (isOverheadView && (possessedActor != NULL))
 			{
 				camUpdate = true;
@@ -1178,7 +1179,7 @@ public:
 					// Make a cube game object and push it back into the array so it is drawn
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
-					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true;
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true; // Is actually a weapon tile
                     AllGameObjects.push_back(terrainTemp);
 
 					// ---- Add Weapons to the game
@@ -1250,7 +1251,7 @@ public:
 		// Setup the 1st team 1 robot
 		position = vec3(-5.0f, 0.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("Robot0", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
         AllGameObjects.push_back(PlayerBun);
@@ -1258,7 +1259,7 @@ public:
 		// Setup the 2nd team 1 robot
 		position = vec3(5.0f, 0.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("Robot1", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
         AllGameObjects.push_back(NPCBun);
@@ -1266,7 +1267,7 @@ public:
 		// Setup the 3rd team 1 robot
 		position = vec3(-25.0f, 1.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> robot3 = make_shared<GameObject>("Robot2", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
         AllGameObjects.push_back(robot3);
@@ -1274,7 +1275,7 @@ public:
 		// Setup the 4th team 1 robot
 		position = vec3(25.0f, 1.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
-		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		shared_ptr<GameObject> robot4 = make_shared<GameObject>("Robot3", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
         AllGameObjects.push_back(robot4);
@@ -1283,7 +1284,7 @@ public:
 		// Setup the 1st team 2 robot
 		position = vec3(-5.0f, 0.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		shared_ptr<GameObject> alien0 = make_shared<GameObject>("evilRobot0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien0);
 		alienUnits.push_back(alien0);
         AllGameObjects.push_back(alien0);
@@ -1292,7 +1293,7 @@ public:
 		// Setup the 2nd team 2 robot
 		position = vec3(5.0f, 0.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		shared_ptr<GameObject> alien1 = make_shared<GameObject>("evilRobot1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
         AllGameObjects.push_back(alien1);
@@ -1300,7 +1301,7 @@ public:
 		// Setup the 3rd team 2 robot
 		position = vec3(-25.0f, 1.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		shared_ptr<GameObject> alien2 = make_shared<GameObject>("evilRobot2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
         AllGameObjects.push_back(alien2);
@@ -1308,7 +1309,7 @@ public:
 		// Setup the 4th team 2 robot
 		position = vec3(25.0f, 1.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
-		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		shared_ptr<GameObject> alien3 = make_shared<GameObject>("evilRobot3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 		AllGameObjects.push_back(alien3);
@@ -1385,7 +1386,7 @@ public:
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 		glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-		glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
+		glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
 		SetMaterial(3);
@@ -1463,7 +1464,7 @@ public:
 					glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-					glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
+					glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
 					sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
 				}
 				
@@ -1497,7 +1498,7 @@ public:
 			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniform3f(prog->getUniform("lightSource"), 0, 60, 0);
+			glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
 			weapons[i]->DrawGameObj(); // Draw the bunny model and render bbox
 
 			M->popMatrix();
@@ -1544,7 +1545,7 @@ public:
 			else if (sceneTerrainObjs[i]->isJumpTile)
 			{
 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Fan);
+				glBindTexture(GL_TEXTURE_2D, Tex_Hex);
 				//SetMaterial(4);
 				//M->scale(vec3(2.f, 2.f, 2.f));
 			}
@@ -1566,7 +1567,7 @@ public:
 			glUniform3f(progTerrain->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 			glUniformMatrix4fv(progTerrain->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniform3f(progTerrain->getUniform("lightSource"), 0, 88, 10);
+			glUniform3f(progTerrain->getUniform("lightSource"), 0, 80, 0);
 			sceneTerrainObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
 			M->popMatrix();
 		}
@@ -1683,6 +1684,7 @@ public:
 
 		//Snap user back to overhead view
 		isOverheadView = true;
+		isCaptureCursor = !isCaptureCursor; // turn the cursor back on
 		firstPersonUI.setRender(false);
 		overViewUI.setRender(true);
 		//reset turn timer
@@ -1896,7 +1898,7 @@ public:
 
 		// Apply perspective projection.
 		P->pushMatrix();
-		P->perspective(45.0f, aspect, 0.01f, 100.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well
+		P->perspective(45.0f, aspect, 0.01f, 200.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well, last arguement is culling distance
 
 		/*Draw the actual scene*/
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1940,7 +1942,7 @@ public:
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
 				SetMaterial(1); // Flat Grey
 				gun->draw(prog);
 				M->popMatrix();
@@ -1949,11 +1951,11 @@ public:
 			{
 				M->pushMatrix();
 				prog->bind();
-				M->translate(vec3(1.0f, -0.3f, -1.1f));
+				M->translate(vec3(0.5f, -0.3f, -0.9f));
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
 				SetMaterial(1); // Flat Grey
 				shotgun->draw(prog);
 				M->popMatrix();
