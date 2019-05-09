@@ -33,7 +33,8 @@ public:
 		min_y, max_y,
 		min_z, max_z;
 
-
+	float health;
+	bool isUsed;
 
 	GameObject(const std::string& name, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team, bool isStaticGeom);
 	void DrawGameObj();

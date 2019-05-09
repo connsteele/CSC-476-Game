@@ -20,6 +20,7 @@
 #include "GameObject.h" // Our Game Object Class
 #include "ourCoreFuncs.h"
 #include "UIController.h"
+#include "Weapon.h"
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -57,6 +58,7 @@ GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
 
 //--- Vector of all actor game objects plus arrays of player units and enemy units
 vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs, AllGameObjects, usedRobotUnits, usedAlienUnits;
+vector<shared_ptr<Weapon> > weapons;
 vector<shared_ptr<GameObject> > robotUnits;
 vector<shared_ptr<GameObject> > alienUnits;
 
@@ -69,9 +71,9 @@ int nbFrames = 0;
 float elapsedTime = 0.0f;
 
 //Turn Time
-time_t turnStartTime = 0;
+double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 10;
+int turnLength = 50;
 
 bool isCaptureCursor = false;
 
@@ -85,7 +87,7 @@ vec3 up = vec3(0, 1, 0);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
-vec3 oCamEye = vec3(-10.0f, 15.0f, -20.00);
+vec3 oCamEye = vec3(-7.0f, 15.0f, -40.00);
 
 // Current Camera
 vec3 curCamEye = oCamEye;
@@ -208,12 +210,35 @@ public:
         return false;
 	}
 
+	//Collect Weapon when colliding
+	void checkWeaponCollection(vec3 NewCenter){
+		for(int i = 0; i < weapons.size(); i++){
+            bool collisionX = NewCenter.x + possessedActor->bboxSize.x >= weapons[i]->bboxCenter.x &&
+                                  weapons[i]->bboxCenter.x + weapons[i]->bboxSize.x >= NewCenter.x;
+            bool collisionY = NewCenter.y + possessedActor->bboxSize.y >= weapons[i]->bboxCenter.y &&
+                                  weapons[i]->bboxCenter.y + weapons[i]->bboxSize.y >= NewCenter.y;
+            bool collisionZ = NewCenter.z + possessedActor->bboxSize.z >= weapons[i]->bboxCenter.z &&
+                                  weapons[i]->bboxCenter.z + weapons[i]->bboxSize.z >= NewCenter.z;
+
+            bool HitResult = collisionX && collisionY && collisionZ;
+
+            if (HitResult) {
+				int weaponType = weapons[i]->weaponType;
+				weapons.erase(weapons.begin() + i);
+				possessedActor->currWeapon = weaponType;
+            	return;
+            }
+
+	    }
+        return;
+	}
+
 
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
 
-		float followMoveSpd = 8.0f * deltaTime;
-		float overheadMoveSpd = 80.0f * deltaTime;
+		float followMoveSpd = 14.0f * deltaTime;
+		float overheadMoveSpd = 110.0f * deltaTime;
 
 		if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
@@ -274,6 +299,7 @@ public:
 			    bool hitObject = ComputePlayerHitObjects(newPosition);
 			    if(!hitObject) {
                     possessedActor->position = newPosition;
+					checkWeaponCollection(newPosition);
                 }
 			}
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
@@ -283,6 +309,7 @@ public:
                 bool hitObject = ComputePlayerHitObjects(newPosition);
                 if(!hitObject) {
                     possessedActor->position = newPosition;
+					checkWeaponCollection(newPosition);
                 }
 			}
 			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
@@ -292,6 +319,7 @@ public:
                 bool hitObject = ComputePlayerHitObjects(newPosition);
                 if(!hitObject) {
                     possessedActor->position = newPosition;
+					checkWeaponCollection(newPosition);
                 }
 			}
 			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
@@ -302,6 +330,7 @@ public:
                 if(!hitObject) {
 
                     possessedActor->position = newPosition;
+					checkWeaponCollection(newPosition);
                 }
 			}
 			else if(key == GLFW_KEY_SPACE && (action == GLFW_PRESS) && canJump){
@@ -392,11 +421,11 @@ public:
 
 			if(whoseTurn == 1) {
                 //Perform team 1 ray trace operations
-                TeamOneRayTrace(ray_wor, posX, posY);
+                TeamOneRayTrace(ray_wor);
             }
 			else{
 				//Perform team 2 ray trace operations
-			    TeamTwoRayTrace(ray_wor, posX, posY);
+			    TeamTwoRayTrace(ray_wor);
 			}
 
 			// Go back to the overhead view after shooting
@@ -462,7 +491,7 @@ public:
 	}
 
 
-	void TeamOneRayTrace(vec3 ray_wor, double posX, double posY){
+	void TeamOneRayTrace(vec3 ray_wor){
         for (int i = 0; i < robotUnits.size(); i++) {
 
 
@@ -478,6 +507,7 @@ public:
 						robotUnits[i]->isPosessed = true;
                 		possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
 						usedRobotUnits.push_back(robotUnits[i]);
+						robotUnits[i]->isUsed = true;
 					}
 				}
 				// Add first unit to array
@@ -485,6 +515,7 @@ public:
 					robotUnits[i]->isPosessed = true;
                 	possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
 					usedRobotUnits.push_back(robotUnits[i]);
+					robotUnits[i]->isUsed = true;
 				}
 
             }
@@ -499,7 +530,13 @@ public:
             //if weapon is shotgun
             if(possessedActor->currWeapon == 1){
 
+				int width, height;
+				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+				float posX = width / 2.0f; //Magic Number
+				float posY = height / 2.0f; //Magic Number
+
                 //Generate rays one time, not once for each actor
+				vec3 ray_center = GenerateRay(posX, posY);
                 vec3 ray_left = GenerateRay(posX - 50.0, posY);
                 vec3 ray_right = GenerateRay(posX + 50.0, posY);
                 vec3 ray_down = GenerateRay(posX, posY + 50.0);
@@ -507,7 +544,7 @@ public:
 
                 //Check ray collisions with all game objects
                 for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+                    bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
@@ -518,8 +555,15 @@ public:
             }
             else if(possessedActor->currWeapon == 0){
 
+				int width, height;
+				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+				float posX = width / 2.0f; //Magic Number
+				float posY = height / 2.0f; //Magic Number
+
+				vec3 ray_center = GenerateRay(posX, posY);
+
                 for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FirePistol(ray_wor, AllGameObjects[i], curCamCenter);
+                    bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
@@ -543,14 +587,19 @@ public:
             if(HitObjects.size() != 0) {
 
                 if (HitObjects[minDistanceIndex]->team == 2 && !isOverheadView) {
-                    HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+                    //HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+					HitObjects[minDistanceIndex]->health -= 1.0f;
+					if(HitObjects[minDistanceIndex]->health <= 0.0f){
+						HitObjects[minDistanceIndex]->beenShot = true;
+						numAlienUnits--;
+					}
                 }
             }
 
         }
 	}
 
-	void TeamTwoRayTrace(vec3 ray_wor, double posX, double posY){
+	void TeamTwoRayTrace(vec3 ray_wor){
         for (int i = 0; i < alienUnits.size(); i++) {
 
 
@@ -566,7 +615,7 @@ public:
 						alienUnits[i]->isPosessed = true;
                 		possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
 						usedAlienUnits.push_back(alienUnits[i]);
-
+						alienUnits[i]->isUsed = true;
 					}
 					else
 					{
@@ -578,6 +627,7 @@ public:
 					alienUnits[i]->isPosessed = true;
                 	possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
 					usedAlienUnits.push_back(alienUnits[i]);
+					alienUnits[i]->isUsed = true;
 				}
 
             }
@@ -591,8 +641,13 @@ public:
 
             //if weapon is shotgun
             if(possessedActor->currWeapon == 1){
+				int width, height;
+				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+				float posX = width / 2.0f; //Magic Number
+				float posY = height / 2.0f; //Magic Number
 
                 //Generate rays one time, not once for each actor
+				vec3 ray_center = GenerateRay(posX, posY);
                 vec3 ray_left = GenerateRay(posX - 50.0, posY);
                 vec3 ray_right = GenerateRay(posX + 50.0, posY);
                 vec3 ray_down = GenerateRay(posX, posY + 50.0);
@@ -600,7 +655,7 @@ public:
 
                 //Check ray collisions with all game objects
                 for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FireShotgun(ray_wor, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+                    bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
@@ -610,9 +665,14 @@ public:
 
             }
             else if(possessedActor->currWeapon == 0){
+				int width, height;
+				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+				float posX = width / 2.0f; //Magic Number
+				float posY = height / 2.0f; //Magic Number
 
+				vec3 ray_center = GenerateRay(posX, posY);
                 for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FirePistol(ray_wor, AllGameObjects[i], curCamCenter);
+                    bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
                     if(isClicked){
                         //If ray hit object add to vector of hit objects
@@ -636,7 +696,11 @@ public:
             if(HitObjects.size() != 0) {
 
                 if (HitObjects[minDistanceIndex]->team == 1 && !isOverheadView) {
-                    HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
+                    HitObjects[minDistanceIndex]->health -= 1.0f;
+					if(HitObjects[minDistanceIndex]->health <= 0.0f){
+						HitObjects[minDistanceIndex]->beenShot = true;
+						numRobotUnits--;
+					}
                 }
             }
 
@@ -790,6 +854,7 @@ public:
 		prog->addAttribute("vertNor");
 		prog->addAttribute("vertTex");
 		prog->addUniform("lightSource"); //lighting uniform
+		prog->addUniform("eye");
 		prog->addUniform("hit"); //Uniform for determining color based on hit or not
 
 		// Setup a terrain shader program
@@ -1107,7 +1172,7 @@ public:
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
 				}
-				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green draw a jump tile
+				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green add a shotgun
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
@@ -1115,6 +1180,13 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+					// ---- Add Weapons to the game
+					vec3 position = tilePos;
+					position.y += 2.0f;
+					shared_ptr<Weapon> shotty = make_shared<Weapon>("shotbun", shotgun, "../resources/", prog, position, tileOrientation, true, 2, false, 1);
+					weapons.push_back(shotty);
+
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -1133,6 +1205,8 @@ public:
 				}
 				else if ((red == 255) && (green == 0) && (blue == 0)) // If the color is red boundry tile
 				{
+					// --- Render a wall of boxes
+
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale / 2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
@@ -1147,6 +1221,13 @@ public:
 					AllGameObjects.push_back(terrainTemp);
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, 3.0f * tileScale / 2.0f, horizontalOffset - i * tileScale);
+					// Make a cube game object and push it back into the array so it is drawn
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
+					AllGameObjects.push_back(terrainTemp);
+
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, 5.0f * tileScale / 2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
@@ -1167,7 +1248,7 @@ public:
 
 
 		// Setup the 1st team 1 robot
-		position = vec3(0.0f, 0.1f, -30.0f);
+		position = vec3(-5.0f, 0.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("player", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(PlayerBun);
@@ -1175,7 +1256,7 @@ public:
         AllGameObjects.push_back(PlayerBun);
 
 		// Setup the 2nd team 1 robot
-		position = vec3(5.0f, 0.1f, -30.0f);
+		position = vec3(5.0f, 0.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("robot2", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(NPCBun);
@@ -1183,7 +1264,7 @@ public:
         AllGameObjects.push_back(NPCBun);
 
 		// Setup the 3rd team 1 robot
-		position = vec3(-10.0f, 1.1f, -30.0f);
+		position = vec3(-25.0f, 1.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot3 = make_shared<GameObject>("robot3", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot3);
@@ -1191,7 +1272,7 @@ public:
         AllGameObjects.push_back(robot3);
 		
 		// Setup the 4th team 1 robot
-		position = vec3(20.0f, 1.1f, -29.0f);
+		position = vec3(25.0f, 1.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
@@ -1200,7 +1281,7 @@ public:
 
 		// ---- Setup the team 2 robots ----
 		// Setup the 1st team 2 robot
-		position = vec3(0.0f, 0.1f, 30.0f);
+		position = vec3(-5.0f, 0.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien0 = make_shared<GameObject>("alien0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien0);
@@ -1209,7 +1290,7 @@ public:
 		
 
 		// Setup the 2nd team 2 robot
-		position = vec3(5.0f, 0.1f, 30.0f);
+		position = vec3(5.0f, 0.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien1 = make_shared<GameObject>("alien1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien1);
@@ -1217,7 +1298,7 @@ public:
         AllGameObjects.push_back(alien1);
 
 		// Setup the 3rd team 2 robot
-		position = vec3(-10.0f, 1.1f, 30.0f);
+		position = vec3(-25.0f, 1.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien2 = make_shared<GameObject>("alien2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien2);
@@ -1225,12 +1306,15 @@ public:
         AllGameObjects.push_back(alien2);
 
 		// Setup the 4th team 2 robot
-		position = vec3(20.0f, 1.1f, 30.0f);
+		position = vec3(25.0f, 1.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien3 = make_shared<GameObject>("alien3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 		AllGameObjects.push_back(alien3);
+
+
+		
 	}
 
 	/**** geometry set up for a quad *****/
@@ -1299,7 +1383,7 @@ public:
 		//add uniforms to shader
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-
+		glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 		glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
@@ -1350,13 +1434,13 @@ public:
 
 				//add uniforms to shader
 				// Set the materials of the bunny depending on if the player has hit it or not
-				if (sceneActorGameObjs[i]->beenShot)
-				{
-					SetMaterial(2);
-					//M->rotate(180.0f, vec3(0, 1, 0));
-					// glUniform1f(prog->getUniform("hit"), 1); //old method
-				}
-				else if (sceneActorGameObjs[i]->team == 1)
+				//if (sceneActorGameObjs[i]->beenShot)
+				//{
+				//	//SetMaterial(2);
+				//	//M->rotate(180.0f, vec3(0, 1, 0));
+				//	// glUniform1f(prog->getUniform("hit"), 1); //old method
+				//}
+				if (sceneActorGameObjs[i]->team == 1)
 				{
 					SetMaterial(3);
 				}
@@ -1365,13 +1449,24 @@ public:
 					SetMaterial(4);
 				}
 
-				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				// Set the color to grey if the units have been used
+				if (sceneActorGameObjs[i]->isUsed == true )
+				{
+					SetMaterial(1);
+				}
 
-				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+				// Only draw units that aren't dead
+				if (sceneActorGameObjs[i]->health > 0.0f)
+				{
+					glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+
+					glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
+					sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
+				}
 				
-				glUniform3f(prog->getUniform("lightSource"), 0, 88, 10);
-				sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
 
 				M->popMatrix();
 			}
@@ -1383,6 +1478,32 @@ public:
 
 		return;
 
+	}
+
+	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P)
+	{
+		static float rotato = 0.0f;
+		prog->bind();
+
+		for (int i = 0; i < weapons.size(); i++)
+		{
+			M->pushMatrix();
+			SetMaterial(2); // Render the weapons as gold
+			weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+			
+			M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
+			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+
+			glUniform3f(prog->getUniform("lightSource"), 0, 60, 0);
+			weapons[i]->DrawGameObj(); // Draw the bunny model and render bbox
+
+			M->popMatrix();
+		}
+
+		prog->unbind();
 	}
 
 	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P)
@@ -1523,9 +1644,9 @@ public:
 		if (!isOverheadView) {
 			//turnStartTime == 0 means that it is the start of a turn
 			if (turnStartTime == 0) {
-				turnStartTime = time(NULL);
+				turnStartTime = glfwGetTime();
 			}
-			else if (time(NULL) - turnStartTime > turnLength)
+			else if (glfwGetTime() - turnStartTime > turnLength)
 			{
 				//switchTurn();
 				readyToSwitch = true;
@@ -1537,6 +1658,9 @@ public:
 		if (whoseTurn == 1) {
 			// if all units used clear array and allow them to be used again
 			if (usedRobotUnits.size() == numRobotUnits) {
+				for(int i = 0; i < usedRobotUnits.size(); i++){
+					usedRobotUnits[i]->isUsed = false;
+				}
 				usedRobotUnits.clear();
 			}
 			// switch turn
@@ -1545,6 +1669,12 @@ public:
 		else if (whoseTurn == 2) {
 			// if all units used clear array and allow them to be used again
 			if (usedAlienUnits.size() == numAlienUnits) {
+				
+				//Walkthrough used array to set bools back to unused
+				for(int i = 0; i < usedAlienUnits.size(); i++){
+					usedAlienUnits[i]->isUsed = false;
+				}
+				
 				usedAlienUnits.clear();
 			}
 			// switch turn
@@ -1605,11 +1735,54 @@ public:
 		if (mainMenuUI.shouldRender())
 			mainMenuUI.drawAll();
 
-		else if (overViewUI.shouldRender())
-			overViewUI.drawAll();
+		else if (overViewUI.shouldRender()) {
+			ImGui::Begin("over view");
+			ImGui::SetWindowSize(ImVec2(WINDOWSIZE_X, WINDOWSIZE_Y / 8));
+			ImGui::SetWindowPos(ImVec2(0, 0));
+			ImGuiWindowFlags_NoBackground;
+			ImGuiWindowFlags_NoMove;
 
-		else if (firstPersonUI.shouldRender())
-			firstPersonUI.drawAll();
+			ImGui::Text("Take Your Turn Player %d !!!", whoseTurn);
+
+			if (whoseTurn == 1) {
+				ImGui::Text("You have %d robots left", numRobotUnits - usedRobotUnits.size());
+			}
+
+			else if (whoseTurn == 2) {
+				ImGui::Text("You have %d aliens left", numAlienUnits - usedAlienUnits.size());
+			}
+
+			for (int i=0; i < sceneActorGameObjs.size(); i++) {
+				ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
+			}
+
+
+			ImGui::End();
+			
+			//update and use this after
+			//overViewUI.drawAll();
+		}
+
+		else if (firstPersonUI.shouldRender()) {
+			ImGui::Begin("first person");
+			ImGui::SetWindowSize(ImVec2(WINDOWSIZE_X, WINDOWSIZE_Y / 8));
+			ImGui::SetWindowPos(ImVec2(0, 0));
+			ImGuiWindowFlags_NoBackground;
+			ImGuiWindowFlags_NoMove;
+
+			float curTime = glfwGetTime();
+			float timeLeft = turnLength - (curTime - turnStartTime);
+			ImGui::Text("Time Left: %1.f", timeLeft);
+
+			//health bar stuff
+			//get cur player health, input max and min values
+			//ImGui::ProgressBar(fraction, ImVec2(0, 50), HP);
+
+			ImGui::End();
+
+			//should be used, will update when fixed
+			//firstPersonUI.drawAll();
+		}
 
 		if (DEBUG_MODE) {
 			//TODO: if time permitting, add more debug features
@@ -1635,7 +1808,7 @@ public:
 		nbFrames += 1;
 		// ---- At intervals print out information to the console
 		if (currentTime - lastTime >= 1.0 ) {
-			printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
+			// printf("MS/FPS: %f    FPS: %f\n", 1000.0 / double(nbFrames) , double(nbFrames)); // Print out ms/fps and frame rate
 			//printf("Objects on the ground: %d\n", sceneActorGameObjs.size()); // Print out the number of objects in the game
 			//printf("Objects Collided with %d\n\n", p1Collisions);
 			nbFrames = 0;
@@ -1749,6 +1922,7 @@ public:
 		//checkAllGameObjects();
 		renderSceneActors(M, P, isOverheadView, 0, 0); // render all the actors in the scene
 		renderTerrain(M, P); // Render all objs in the terrain
+		renderWeapons(M, P);
 		checkAllGameObjects();
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();
@@ -1758,16 +1932,33 @@ public:
 		{
 			// Draw the Gun
 			glClear(GL_DEPTH_BUFFER_BIT); // Clear the depth buffer so the weapon is drawn over all other geometry
-			M->pushMatrix();
-			prog->bind();
-			M->translate(vec3(0.8f, -0.8f, -1.9f));
-			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
-			SetMaterial(1); // Flat Grey
-			gun->draw(prog);
-			M->popMatrix();
+			if (possessedActor != NULL && possessedActor->currWeapon == 0) // if the weapon is a pistol
+			{
+				M->pushMatrix();
+				prog->bind();
+				M->translate(vec3(0.8f, -0.8f, -1.9f));
+				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+				SetMaterial(1); // Flat Grey
+				gun->draw(prog);
+				M->popMatrix();
+			}
+			else if (possessedActor != NULL && possessedActor->currWeapon == 1) // if the weapon is a shotgun
+			{
+				M->pushMatrix();
+				prog->bind();
+				M->translate(vec3(1.0f, -0.3f, -1.1f));
+				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+				SetMaterial(1); // Flat Grey
+				shotgun->draw(prog);
+				M->popMatrix();
+			}
+			
 
 			// Draw the Crosshair
 			M->pushMatrix();
@@ -1777,6 +1968,7 @@ public:
 			M->scale(vec3(0.5f, 0.1f, 0.1f));
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
 			cube->draw(prog);
@@ -1788,6 +1980,7 @@ public:
 			M->scale(vec3(0.1f, 0.5f, 0.1f));
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
 			cube->draw(prog);

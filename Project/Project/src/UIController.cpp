@@ -58,5 +58,9 @@ void UICheckbox::draw() {
 ///UIText///
 ////////////
 void UIText::draw() {
-	ImGui::Text(text);
+	if (val != -1)
+		ImGui::Text(text);
+
+	else
+		ImGui::Text(text, val);
 }

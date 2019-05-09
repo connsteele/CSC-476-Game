@@ -24,7 +24,7 @@ void main()
 	lightVec = normalize(lightVec);
 
 	//calc h
-	vec3 V = normalize(camera - WPos); //use eye or camera
+	vec3 V = normalize(eye - WPos); //use eye or camera
 	vec3 h = normalize(V + lightVec );
    
    

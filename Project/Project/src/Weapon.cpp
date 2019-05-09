@@ -12,3 +12,8 @@ Weapon::Weapon(const std::string &name, std::shared_ptr<Shape> &objModel, const 
     this->weaponType = weaponType;
 
 }
+
+void Weapon::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up)
+{
+	GameObject::step(dt, M, P, camLoc, center, up);
+}

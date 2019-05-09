@@ -119,9 +119,14 @@ public:
 class UIText : public UIElement {
 private:
 	char* text;
+	float val = -1;
 
 public:
 	UIText(char* text) { this->text = text; }
+	UIText(char* text, float val) { 
+		this->text = text; 
+		this->val = val;
+	}
 	void draw();
 };
 
