@@ -6,7 +6,7 @@
 #include "glad/glad.h"
 
 //#define TINYOBJLOADER_IMPLEMENTATION
-//#include "tiny_obj_loader.h"
+#include "tiny_obj_loader.h" // MIGHT HAVE TO REMOVE
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -27,7 +27,11 @@
 using namespace std;
 using namespace glm;
 
-//Globals
+//------ Globals
+vector<tinyobj::shape_t> robotDefault, robot1;
+vector<tinyobj::material_t> robotDefaultMat, robot1Mat;
+GLuint buffRobotDefault, buffRobotNormDefault, buffRobot1, buffRobot1Norm;
+
 
 //---
 int p1Collisions = 0;
@@ -78,8 +82,7 @@ vec3 up = vec3(0, 1, 0);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
-//vec3 oCamCenter = vec3(-33.9f, 51.884197f, 0.059f);
-vec3 oCamEye = vec3(-25.0f, 45.0f, 0.00); // was vec3(-17.4f, 40.0f, 5.00)
+vec3 oCamEye = vec3(-10.0f, 15.0f, -20.00);
 
 // Current Camera
 vec3 curCamEye = oCamEye;
@@ -139,7 +142,7 @@ public:
 	shared_ptr<Shape> bunnyShape, maRobotShape;
 	shared_ptr<Shape> cube;
 	shared_ptr<Shape> sphere;
-	shared_ptr<Shape> gun;
+	shared_ptr<Shape> gun, shotgun;
 
 	shared_ptr<GameObject> bunBun, groundbox, bunBunTwo;
 
@@ -197,7 +200,7 @@ public:
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
 
-		float followMoveSpd = 40.0f * deltaTime;
+		float followMoveSpd = 8.0f * deltaTime;
 		float overheadMoveSpd = 80.0f * deltaTime;
 
 		if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
@@ -546,6 +549,10 @@ public:
 						usedAlienUnits.push_back(alienUnits[i]);
 
 					}
+					else
+					{
+						printf("Actor was already used, pick a different teammate");
+					}
 				}
 				// Add first unit to array
 				else{
@@ -719,6 +726,12 @@ public:
 			glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.22, 0.22);
 			glUniform1f(prog->getUniform("shine"), 20.0);
 			break;
+		case 5: // White
+			glUniform3f(prog->getUniform("MatAmb"), 1.0, 1.0, 1.0);
+			glUniform3f(prog->getUniform("MatDif"), 1.0, 1.0, 1.0);
+			glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.22, 0.22);
+			glUniform1f(prog->getUniform("shine"), 20.0);
+			break;
 		}
 	}
 
@@ -850,7 +863,7 @@ public:
 
 		// Initialize the bunny obj mesh VBOs etc
 		maRobotShape = make_shared<Shape>();
-		maRobotShape->loadMesh(resourceDirectory + "/bman.obj"); // has vertTexure issues
+		maRobotShape->loadMesh(resourceDirectory + "/robot0.obj"); // has vertTexure issues
 		maRobotShape->resize();
 		maRobotShape->init();
 
@@ -867,16 +880,65 @@ public:
 		sphere->resize();
 		sphere->init();
 
-		// Initialize the gun OBJ model
+		// Initialize the pistol OBJ model
 		gun = make_shared<Shape>();
 		gun->loadMesh(resourceDirectory + "/Pistol.obj");
 		gun->resize();
 		gun->init();
 
+		// Initialize the gun OBJ model
+		shotgun = make_shared<Shape>();
+		shotgun->loadMesh(resourceDirectory + "/shotgun.obj");
+		shotgun->resize();
+		shotgun->init();
+
+		// ----- Load the models for the idle animation
+		// Robot Default pose
+		string err;
+		bool fbool;
+		fbool = false;
+		fbool = tinyobj::LoadObj(robotDefault, robotDefaultMat, err, "../resources/robot0.obj");
+		if (robotDefault.size() <= 0) {
+			cout << "robotDefault size < 0";
+			return;
+		}
+		glGenBuffers(1, &buffRobotDefault);
+		glBindBuffer(GL_ARRAY_BUFFER, buffRobotDefault);
+		glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.positions.size() * sizeof(float), &robotDefault[0].mesh.positions[0], GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
+		//Bind Default FaceNorms
+		glGenBuffers(1, &buffRobotNormDefault);
+		glBindBuffer(GL_ARRAY_BUFFER, buffRobotNormDefault);
+		glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.normals.size() * sizeof(float), &robotDefault[0].mesh.normals[0], GL_STATIC_DRAW);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
+
+		// Robots Pose 2
+		fbool = false;
+		fbool = tinyobj::LoadObj(robot1, robot1Mat, err, "../resources/robot0.obj");
+		if (robot1.size() <= 0) {
+			cout << "robot1 size < 0";
+			return;
+		}
+		glGenBuffers(1, &buffRobot1);
+		glBindBuffer(GL_ARRAY_BUFFER, buffRobot1);
+		glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.positions.size() * sizeof(float), &robot1[0].mesh.positions[0], GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
+		//Bind Default FaceNorms
+		glGenBuffers(1, &buffRobot1Norm);
+		glBindBuffer(GL_ARRAY_BUFFER, buffRobot1Norm);
+		glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.normals.size() * sizeof(float), &robot1[0].mesh.normals[0], GL_STATIC_DRAW);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
+
+
 		// Setup player bbox
 		initPlayerBbox();
 
 		// ---------- Setup Other Geometery -----------
+		
 		
 
 		// ---------- Load Images-----------
@@ -1597,21 +1659,46 @@ public:
 
 		// ----- Draw the weapon in first person ------
 		if (!isOverheadView)
-		{ 
+		{
+			// Draw the Gun
 			glClear(GL_DEPTH_BUFFER_BIT); // Clear the depth buffer so the weapon is drawn over all other geometry
 			M->pushMatrix();
 			prog->bind();
-			M->translate(vec3(0.6f, -0.8f, -2.0f)); // Transform the gun so it LOOKS GOOD
+			M->translate(vec3(0.8f, -0.8f, -1.9f));
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			// -------
-
 			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
-			gun->draw(prog); // Draw the bunny model and render bbox
-			prog->unbind();
-			// pop
+			SetMaterial(1); // Flat Grey
+			gun->draw(prog);
 			M->popMatrix();
+
+			// Draw the Crosshair
+			M->pushMatrix();
+			SetMaterial(5); //Red
+			// Draw the horizontal line
+			M->translate(vec3(0.0f, 0.0f, -15.0f));
+			M->scale(vec3(0.5f, 0.1f, 0.1f));
+			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+			cube->draw(prog);
+			M->popMatrix();
+
+			// Draw the vertical line
+			M->pushMatrix();
+			M->translate(vec3(0.0f, 0.0f, -15.0f));
+			M->scale(vec3(0.1f, 0.5f, 0.1f));
+			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+			cube->draw(prog);
+			M->popMatrix();
+
+			prog->unbind();
+			
 		}
 
 		M->popMatrix(); // Pop Scene Matrix
