@@ -9,6 +9,7 @@ void UIController::drawAll() {
 	ImGui::Begin(name);
 	ImGui::SetWindowSize(ImVec2(sizeX, sizeY));
 	ImGui::SetWindowPos(ImVec2(0, 0));
+	ImGuiWindowFlags_NoMove;
 
 	//loop through elements in controller; draw all
 	for (int i = 0; i < elements.size(); i++)
