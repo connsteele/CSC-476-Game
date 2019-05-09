@@ -19,12 +19,12 @@ public:
 		this->mainColor = mainColor;
 		this->ID = ID;
 	}
-	void draw() {}
+	virtual void draw() = 0;
 };
 
 class UIFrame : public UIElement {
 private:
-	std::vector<UIElement> elements;
+	std::vector<UIElement*> elements;
 	float width, height;
 	int pos_flags, window_flags, size_flags;
 
@@ -40,7 +40,7 @@ public:
 		this->size_flags = size_flags;
 	}
 
-	void addElement(UIElement newUI) { elements.push_back(newUI); }
+	void addElement(UIElement* newUI) { elements.push_back(newUI); }
 	void draw();
 };
 
@@ -116,16 +116,29 @@ public:
 	bool getCheck() { return check; }
  };
 
+class UIText : public UIElement {
+private:
+	char* text;
+
+public:
+	UIText(char* text) { this->text = text; }
+	void draw();
+};
+
 class UIController {
 private:
-	std::vector<UIElement> elements;
+	std::vector<UIElement*> elements;
+	float sizeX, sizeY;
 	bool render = false;
+	char* name;
 
 public:
 	UIController() {}
-	void addElement(UIElement newUI) { elements.push_back(newUI); }
+	void addElement(UIElement* newUI) { elements.push_back(newUI); }
 	void drawAll();
 	void setRender(bool r) { render = r; }
 	bool shouldRender() { return render; }
+	void setName(char* name) { this->name = name; }
+	void setSize(float sizeX, float sizeY) { this->sizeX = sizeX; this->sizeY = sizeY; }
 };
 

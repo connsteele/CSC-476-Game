@@ -6,11 +6,15 @@
 //////////////////
 void UIController::drawAll() {
 	//begin ImGui draw; all draw commands must be performed AFTER here
-	ImGui::Begin("");
+	ImGui::Begin(name);
+	ImGui::SetWindowSize(ImVec2(sizeX, sizeY));
+	ImGui::SetWindowPos(ImVec2(0, 0));
+	ImGuiWindowFlags_NoBackground;
+	ImGuiWindowFlags_NoMove;
 
 	//loop through elements in controller; draw all
 	for (int i = 0; i < elements.size(); i++)
-		elements[i].draw();
+		elements[i]->draw();
 
 	//end Imgui draw; all draw commands must be performed BEFORE here
 	ImGui::End();
@@ -48,4 +52,11 @@ void UIBar::draw() {
 ////////////////
 void UICheckbox::draw() {
 	ImGui::Checkbox(name, &check);
+}
+
+////////////
+///UIText///
+////////////
+void UIText::draw() {
+	ImGui::Text(text);
 }

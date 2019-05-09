@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.7)
 project(lab1)
 
 # Use glob to get the list of all source files.
-file(GLOB SOURCES "src/*.cpp" "resources/src/*.c" "src/BaseCode/*.cpp" "resources/include/imgui-master/*.cpp"  "resources/include/imgui-master/examples/*.cpp")
+file(GLOB SOURCES "src/*.cpp" "resources/src/*.c" "src/BaseCode/*.cpp" "resources/include/imgui-master/*.cpp" "resources/include/imgui-master/examples/imgui_impl_glfw.cpp" "resources/include/imgui-master/examples/imgui_impl_opengl3.cpp")
 
 # We don't really need to include header and resource files to build, but it's
 # nice to have them show up in IDEs.

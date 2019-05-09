@@ -60,9 +60,10 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include "imgui.h"
+#include "imgui-master/imgui.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
+#include "glad/glad.h"
 #if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
 #include <stddef.h>     // intptr_t
 #else
@@ -91,7 +92,7 @@
 //  Helper libraries are often used for this purpose! Here we are supporting a few common ones (gl3w, glew, glad).
 //  You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-#include <GL/gl3w.h>    // Needs to be initialized with gl3wInit() in user's code
+//#include <GL/gl3w.h>    // Needs to be initialized with gl3wInit() in user's code
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
 #include <GL/glew.h>    // Needs to be initialized with glewInit() in user's code
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
@@ -224,7 +225,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
     glUniform1i(g_AttribLocationTex, 0);
     glUniformMatrix4fv(g_AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]);
 #ifdef GL_SAMPLER_BINDING
-    glBindSampler(0, 0); // We use combined texture/sampler state. Applications using GL 3.3 may set that otherwise.
+    //glBindSampler(0, 0); // We use combined texture/sampler state. Applications using GL 3.3 may set that otherwise.
 #endif
 
     // Recreate the VAO every time (this is to easily allow multiple GL contexts to be rendered to. VAO are not shared among GL contexts)
@@ -302,7 +303,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
     glUseProgram(last_program);
     glBindTexture(GL_TEXTURE_2D, last_texture);
 #ifdef GL_SAMPLER_BINDING
-    glBindSampler(0, last_sampler);
+    //glBindSampler(0, last_sampler);
 #endif
     glActiveTexture(last_active_texture);
 #ifndef IMGUI_IMPL_OPENGL_ES2

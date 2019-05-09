@@ -19,6 +19,7 @@
 // #include "BaseCode/Texture.h"
 #include "GameObject.h" // Our Game Object Class
 #include "ourCoreFuncs.h"
+#include "UIController.h"
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -32,6 +33,8 @@ vector<tinyobj::shape_t> robotDefault, robot1;
 vector<tinyobj::material_t> robotDefaultMat, robot1Mat;
 GLuint buffRobotDefault, buffRobotNormDefault, buffRobot1, buffRobot1Norm;
 
+#define WINDOWSIZE_X 1920
+#define WINDOWSIZE_Y 1080
 
 //---
 int p1Collisions = 0;
@@ -93,6 +96,13 @@ vec3 curCamCenter;
 float orbRotate = 0.0;
 float smallRotate = 0.0;
 float bunnyRotate = 0.0;
+
+//UI
+UIController mainMenuUI;
+UIController overViewUI;
+UIController firstPersonUI;
+UIController debugUI;
+#define DEBUG_MODE 1   //!= 0 to display debug UI window; 0 to hide
 
 
 class Application : public EventCallbacks
@@ -338,6 +348,8 @@ public:
 			else
 			{
 				isOverheadView = true;
+				firstPersonUI.setRender(false);
+				overViewUI.setRender(true);
 			}			
 		}
 		else if (key == GLFW_KEY_C && action == GLFW_PRESS)
@@ -837,6 +849,47 @@ public:
 		p1_bboxCenter = glm::vec3(3.f/2.f);
 		p1_bboxTransform = glm::translate(glm::mat4(1), p1_bboxCenter) * glm::scale(glm::mat4(1), p1_bboxSize);
 
+	}
+
+	void initOverViewUI(GLFWwindow *window) {
+		overViewUI.setName("Overview");
+		overViewUI.setRender(true);
+		overViewUI.setSize(WINDOWSIZE_X, WINDOWSIZE_Y / 8);
+		//declare UI elements
+		//UIButton* testButton1 = new UIButton(vec3(0, 0, 0), vec3(255, 0, 0), 1, "testButton1");
+		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+		//add them to UI controller
+		//overViewUI.addElement(testButton1);
+	}
+
+	void initFirstPersonUI(GLFWwindow *window) {
+		firstPersonUI.setName("First Person");
+		firstPersonUI.setRender(false);
+		firstPersonUI.setSize(WINDOWSIZE_X, WINDOWSIZE_Y / 8);
+		//declare UI elements
+		//UIButton* testButton2 = new UIButton(vec3(0, 0, 0), vec3(0, 255, 0), 1, "testButton2");
+		UIBar* healthBar = new UIBar(vec3(0, 0, 0), vec3(0, 255, 0), 1, 5.f, "health", 0.f, 5.f);
+
+		//add them to UI controller
+		//firstPersonUI.addElement(testButton2);
+		firstPersonUI.addElement(healthBar);
+	}
+
+	void initMainMenuUI(GLFWwindow *window) {
+
+	}
+
+	void initUI(GLFWwindow *window) {
+		ImGui::CreateContext();
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui::StyleColorsDark();
+		ImGui::GetStyle().Alpha = 1.f;
+		//ImGui::GetStyle().Colors[]
+		ImGui_ImplOpenGL3_Init("#version 130");
+		initOverViewUI(window);
+		initFirstPersonUI(window);
+		initMainMenuUI(window);
 	}
 
 	void setupCoverCubeLocations()
@@ -1500,6 +1553,8 @@ public:
 
 		//Snap user back to overhead view
 		isOverheadView = true;
+		firstPersonUI.setRender(false);
+		overViewUI.setRender(true);
 		//reset turn timer
 		turnStartTime = 0;
 		readyToSwitch = false;
@@ -1539,6 +1594,32 @@ public:
 				}
 			}
 		}
+	}
+
+	void renderUI() {
+		//start the ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		if (mainMenuUI.shouldRender())
+			mainMenuUI.drawAll();
+
+		else if (overViewUI.shouldRender())
+			overViewUI.drawAll();
+
+		else if (firstPersonUI.shouldRender())
+			firstPersonUI.drawAll();
+
+		if (DEBUG_MODE) {
+			//TODO: if time permitting, add more debug features
+			ImGui::Begin("Developer Toolbox");
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::End();
+		}
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 
 	void render()
@@ -1609,6 +1690,8 @@ public:
 
 			
 			isOverheadView = false; // Toggle the currentCamera after interpolation is finished
+			firstPersonUI.setRender(true);
+			overViewUI.setRender(false);
 		}
 
 		if (camInterp <= 1.0f && camUpdate) // interpolate from the overhead camera to the possesd gameobjects view
@@ -1714,6 +1797,8 @@ public:
 			
 		}
 
+		renderUI();
+
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
 	}
@@ -1746,7 +1831,7 @@ int main(int argc, char **argv)
 
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
-
+	application->initUI(windowManager->getHandle());
 
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
@@ -1766,6 +1851,11 @@ int main(int argc, char **argv)
 
 
 	}
+
+	//teardown Imgui
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	// Quit program.
 	windowManager->shutdown();
