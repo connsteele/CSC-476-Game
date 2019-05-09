@@ -139,6 +139,7 @@ public:
 	shared_ptr<Shape> bunnyShape, maRobotShape;
 	shared_ptr<Shape> cube;
 	shared_ptr<Shape> sphere;
+	shared_ptr<Shape> gun;
 
 	shared_ptr<GameObject> bunBun, groundbox, bunBunTwo;
 
@@ -866,6 +867,12 @@ public:
 		sphere->resize();
 		sphere->init();
 
+		// Initialize the gun OBJ model
+		gun = make_shared<Shape>();
+		gun->loadMesh(resourceDirectory + "/Pistol.obj");
+		gun->resize();
+		gun->init();
+
 		// Setup player bbox
 		initPlayerBbox();
 
@@ -1152,38 +1159,6 @@ public:
 			cout << "Error setting up frame buffer - exiting" << endl;
 			exit(0);
 		}
-	}
-
-	void renderPlayerBbox(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView)
-	{
-		prog->bind();
-		// Recompute the position of the box b4 drawing it
-
-		p1_bboxCenter = curCamCenter;
-		p1_bboxTransform = translate(glm::mat4(1), p1_bboxCenter) * glm::scale(glm::mat4(1), p1_bboxSize);
-
-
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(p1_bboxTransform));
-		glBindBuffer(GL_ARRAY_BUFFER, p1_vbo_vertices);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(
-			0,  // attribute
-			4,                  // number of elements per vertex, here (x,y,z,w)
-			GL_FLOAT,           // the type of each element
-			GL_FALSE,           // take our values as-is
-			0,                  // no extra data between each position
-			0                   // offset of first element
-		);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, p1_ibo_elements);
-		glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_SHORT, 0);
-		glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_SHORT, (GLvoid*)(4 * sizeof(GLushort)));
-		glDrawElements(GL_LINES, 8, GL_UNSIGNED_SHORT, (GLvoid*)(8 * sizeof(GLushort)));
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-		glDisableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		prog->unbind();
 	}
 
 	void renderGroundPlane(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView)
@@ -1482,7 +1457,7 @@ public:
 		{
 			float NewY = possessedActor->position.y + (velocity * deltaTime);
 			vec3 NewPosition = vec3(possessedActor->position.x, NewY, possessedActor->position.z);
-			if(!GravityGroundCollision(NewPosition)){
+			if (!GravityGroundCollision(NewPosition)) {
 				possessedActor->position.y = NewY;
 			}
 			else{
@@ -1584,25 +1559,29 @@ public:
 
 		// Create the matrix stacks
 		auto P = make_shared<MatrixStack>();
-		
 		auto M = make_shared<MatrixStack>();
 
+		
 
 		// Apply perspective projection.
 		P->pushMatrix();
 		P->perspective(45.0f, aspect, 0.01f, 100.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well
 
-
 		/*Draw the actual scene*/
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		M->pushMatrix(); // Matrix for the Scene
+
+		
+		
+		
 		// renderGroundPlane(M, P, isOverheadView); //draw the ground plane
 
 		//acceleration = -9.8f;
 
 		// Update the position of the players bbox
-		renderPlayerBbox(M, P, isOverheadView);
+		// renderPlayerBbox(M, P, isOverheadView);
 
 		velocity += deltaTime * acceleration;
 
@@ -1616,9 +1595,27 @@ public:
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();
 
+		// ----- Draw the weapon in first person ------
+		if (!isOverheadView)
+		{ 
+			glClear(GL_DEPTH_BUFFER_BIT); // Clear the depth buffer so the weapon is drawn over all other geometry
+			M->pushMatrix();
+			prog->bind();
+			M->translate(vec3(0.6f, -0.8f, -2.0f)); // Transform the gun so it LOOKS GOOD
+			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			// -------
+
+			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+			gun->draw(prog); // Draw the bunny model and render bbox
+			prog->unbind();
+			// pop
+			M->popMatrix();
+		}
 
 		M->popMatrix(); // Pop Scene Matrix
-
+		P->popMatrix(); // This wasnt here b4
 	}
 
 };
