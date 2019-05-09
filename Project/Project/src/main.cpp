@@ -1916,7 +1916,10 @@ public:
 		// Update the position of the players bbox
 		// renderPlayerBbox(M, P, isOverheadView);
 
-		velocity += deltaTime * acceleration;
+		if(possessedActor != NULL) {
+            velocity += deltaTime * acceleration;
+        }
+
 
 		ApplyGravity();
 
