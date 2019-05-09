@@ -130,6 +130,8 @@ public:
 	//Player Gravity Variables
 	float acceleration = -9.8f;
 	float velocity = 0.0f;
+	bool canJump = true;
+	bool readyToSwitch = false;
 	
 
 	WindowManager * windowManager = nullptr;
@@ -292,6 +294,10 @@ public:
                     possessedActor->position = newPosition;
                 }
 			}
+			else if(key == GLFW_KEY_SPACE && (action == GLFW_PRESS) && canJump){
+			    velocity = 7.0f;
+			    canJump = false;
+			}
 		}
 		else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
 		{
@@ -384,7 +390,8 @@ public:
 			// Go back to the overhead view after shooting
 			if (!isOverheadView)
 			{
-				switchTurn();
+				//switchTurn();
+				readyToSwitch = true;
 			}
 		}
 
@@ -1131,7 +1138,7 @@ public:
         AllGameObjects.push_back(robot3);
 		
 		// Setup the 4th team 1 robot
-		position = vec3(20.0f, 1.1f, -30.0f);
+		position = vec3(20.0f, 1.1f, -29.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("robot4", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
 		sceneActorGameObjs.push_back(robot4);
@@ -1467,7 +1474,8 @@ public:
 			}
 			else if (time(NULL) - turnStartTime > turnLength)
 			{
-				switchTurn();
+				//switchTurn();
+				readyToSwitch = true;
 			}
 		}
 	}
@@ -1494,6 +1502,7 @@ public:
 		isOverheadView = true;
 		//reset turn timer
 		turnStartTime = 0;
+		readyToSwitch = false;
 	}
 
 	bool GravityGroundCollision(vec3 futurePosition){
@@ -1524,6 +1533,10 @@ public:
 			}
 			else{
 				velocity = 0.0f;
+				canJump = true;
+				if(readyToSwitch == true){
+				    switchTurn();
+				}
 			}
 		}
 	}
