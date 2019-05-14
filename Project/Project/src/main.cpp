@@ -53,6 +53,10 @@ mat4 p1_bboxTransform;
 GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan;
 std::shared_ptr<Program> progTerrain;
 
+// shadow stuff
+shared_ptr<Program> DepthProg;
+shared_ptr<Program> ShadowProg;
+
 // --- Variables for Geometry
 GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
 
@@ -180,6 +184,11 @@ public:
 
 	// Data necessary to give our triangle to OpenGL
 	GLuint CylVertexBufferID;
+
+	//shadow stuff
+	GLuint depthMapFBO;
+	const GLuint S_WIDTH = 1024, S_HEIGHT = 1024;
+	GLuint depthMap;
 
 	// bool FirstTime = true;
 
@@ -878,6 +887,48 @@ public:
 		progTerrain->addAttribute("vertTex");
 		progTerrain->addUniform("lightSource"); //lighting uniform
 
+		//shadow stuff
+		DepthProg = make_shared<Program>();
+		DepthProg->setVerbose(true);
+		DepthProg->setShaderNames(resourceDirectory + "/depth_vert.glsl", resourceDirectory + "/depth_frag.glsl");
+		if (!DepthProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		/// Add uniform and attributes to each of the programs
+		DepthProg->addUniform("LP");
+		DepthProg->addUniform("LV");
+		DepthProg->addUniform("M");
+		DepthProg->addAttribute("vertPos");
+		//un-needed, but easier then modifying shape
+		DepthProg->addAttribute("vertNor");
+		DepthProg->addAttribute("vertTex");
+
+		//shadow stuff
+		ShadowProg = make_shared<Program>();
+		ShadowProg->setVerbose(true);
+		ShadowProg->setShaderNames(resourceDirectory + "/shadow_vert.glsl", resourceDirectory + "/shadow_frag.glsl");
+
+		if (!ShadowProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		ShadowProg->addUniform("P");
+		ShadowProg->addUniform("M");
+		ShadowProg->addUniform("V");
+		ShadowProg->addUniform("LS");
+		ShadowProg->addUniform("lightDir");
+		ShadowProg->addAttribute("vertPos");
+		ShadowProg->addAttribute("vertNor");
+		ShadowProg->addAttribute("vertTex");
+		ShadowProg->addUniform("Texture0");
+		ShadowProg->addUniform("shadowDepth");
+
+		initShadow();
 	}
 	
 	void initPlayerBbox()
@@ -956,6 +1007,31 @@ public:
 		initOverViewUI(window);
 		initFirstPersonUI(window);
 		initMainMenuUI(window);
+	}
+
+	void initShadow() {
+
+		//generate the FBO for the shadow depth
+		glGenFramebuffers(1, &depthMapFBO);
+
+		//generate the texture
+		glGenTextures(1, &depthMap);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, S_WIDTH, S_HEIGHT,
+			0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+		//bind with framebuffer's depth buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	}
 
 	void setupCoverCubeLocations()
@@ -1417,6 +1493,86 @@ public:
 		// Do logic here!
 	}
 
+	//shadow stuff
+	mat4 SetOrthoMatrix(shared_ptr<Program> curShade) {
+		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 30.0f);
+		//fill in the glUniform call to send to the right shader!
+		glUniformMatrix4fv(curShade->getUniform("LP"), 1, GL_FALSE, value_ptr(ortho));
+		return ortho;
+	}
+
+	//shadow stuff
+	mat4 SetLightView(shared_ptr<Program> curShade, vec3 pos, vec3 LA, vec3 up) {
+		mat4 Cam = lookAt(pos, LA, up);
+		//fill in the glUniform call to send to the right shader!
+		glUniformMatrix4fv(curShade->getUniform("LV"), 1, GL_FALSE, value_ptr(Cam));
+		return Cam;
+	}
+
+	//shadow stuff
+	void SetProjectionMatrix(shared_ptr<Program> curShade) {
+		int width, height;
+		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+		float aspect = width / (float)height;
+		mat4 Projection = perspective(radians(50.0f), aspect, 0.1f, 100.0f);
+		glUniformMatrix4fv(curShade->getUniform("P"), 1, GL_FALSE, value_ptr(Projection));
+	}
+
+	//shadow stuff
+	void renderShadows(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P) {
+		mat4 LS;
+		vec3 g_light = vec3(0, 80, 0);
+
+		// Get current frame buffer size.
+		int width, height;
+		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+
+		//set up light's depth map
+		glViewport(0, 0, S_WIDTH, S_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glCullFace(GL_FRONT);
+		
+		//set up shadow shader
+		//render scene
+		DepthProg->bind();
+		//TODO you will need to fix these
+		mat4 LP = SetOrthoMatrix(DepthProg);
+		mat4 LV = SetLightView(DepthProg, g_light, vec3(0, 0, 0), vec3(0, 1, 0));
+
+		LS = LP * LV;
+
+		drawScene(DepthProg, 0, 0);
+		DepthProg->unbind();
+		glCullFace(GL_BACK);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+
+		glViewport(0, 0, width, height);
+		// Clear framebuffer.
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		
+		//now render the scene like normal
+		//set up shadow shader
+		ShadowProg->bind();
+		/* also set up light depth map */
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
+		glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
+		//render scene
+		SetProjectionMatrix(ShadowProg);
+		//attemp to set V matrix using our cam setup
+		glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+		//TODO: is there other uniform data that must be sent?
+		glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+		drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+		ShadowProg->unbind();
+		
+	}
+
 	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView, int offsetX, int offsetZ)
 	{	
 
@@ -1612,15 +1768,6 @@ public:
 		}
 
 		return;
-	}
-
-	void jumpPad(shared_ptr<GameObject> currObjectPointer) {
-		vec3 orient;
-		orient.x = radius * cos(phi)*cos(theta);
-		orient.y = radius * sin(phi);
-		orient.z = radius * cos(phi)*sin(theta);
-
-
 	}
 
 	void updateGameLogic()
@@ -1928,6 +2075,7 @@ public:
 		renderSceneActors(M, P, isOverheadView, 0, 0); // render all the actors in the scene
 		renderTerrain(M, P); // Render all objs in the terrain
 		renderWeapons(M, P);
+		renderShadows(M, P);
 		checkAllGameObjects();
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();
