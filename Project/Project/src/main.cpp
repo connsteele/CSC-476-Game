@@ -1536,13 +1536,15 @@ public:
 		//set up shadow shader
 		//render scene
 		DepthProg->bind();
-		//TODO you will need to fix these
+
 		mat4 LP = SetOrthoMatrix(DepthProg);
 		mat4 LV = SetLightView(DepthProg, g_light, vec3(0, 0, 0), vec3(0, 1, 0));
 
 		LS = LP * LV;
 
-		drawScene(DepthProg, 0, 0);
+		//ToDo shadow : find way to replace
+		//drawScene(DepthProg, 0, 0);
+
 		DepthProg->unbind();
 		glCullFace(GL_BACK);
 
@@ -1566,9 +1568,11 @@ public:
 		SetProjectionMatrix(ShadowProg);
 		//attemp to set V matrix using our cam setup
 		glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-		//TODO: is there other uniform data that must be sent?
 		glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
-		drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+
+		//ToDo shadow : find way to replace
+		//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+
 		ShadowProg->unbind();
 		
 	}
@@ -2072,10 +2076,12 @@ public:
 
 		M->pushMatrix();
 		//checkAllGameObjects();
+		//ToDo shadows: may need to wrap other render calls to get shadows?
+		renderShadows(M, P);
 		renderSceneActors(M, P, isOverheadView, 0, 0); // render all the actors in the scene
 		renderTerrain(M, P); // Render all objs in the terrain
 		renderWeapons(M, P);
-		renderShadows(M, P);
+		
 		checkAllGameObjects();
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();
