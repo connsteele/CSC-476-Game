@@ -1658,7 +1658,7 @@ public:
 	void switchTurn() {
 		if (whoseTurn == 1) {
 			// if all units used clear array and allow them to be used again
-			if (usedRobotUnits.size() == numRobotUnits) {
+			if (usedRobotUnits.size() >= numRobotUnits) {
 				for(int i = 0; i < usedRobotUnits.size(); i++){
 					usedRobotUnits[i]->isUsed = false;
 				}
@@ -1669,7 +1669,7 @@ public:
 		}
 		else if (whoseTurn == 2) {
 			// if all units used clear array and allow them to be used again
-			if (usedAlienUnits.size() == numAlienUnits) {
+			if (usedAlienUnits.size() >= numAlienUnits) {
 				
 				//Walkthrough used array to set bools back to unused
 				for(int i = 0; i < usedAlienUnits.size(); i++){
