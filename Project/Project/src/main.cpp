@@ -144,6 +144,13 @@ public:
 	float velocity = 0.0f;
 	bool canJump = true;
 	bool readyToSwitch = false;
+
+	// Uniform spatial data structure
+    vector<vector<shared_ptr<GameObject> > > UniformStructure;
+    float minWidth = 99999.0f;
+    float maxWidth = -99999.0f;
+    float minHeight = 99999.0f;
+    float maxHeight = -99999.0f;
 	
 
 	WindowManager * windowManager = nullptr;
@@ -1137,8 +1144,15 @@ public:
 		float tileScale = 2.0f;
 		shared_ptr<GameObject> terrainTemp;
 		float verticalOffset = (height * tileScale)/2.0f, horizontalOffset = (width * tileScale)/2.0f;
+
+		//Calculate min / max width and height
+        maxHeight = verticalOffset + (0) * -tileScale;
+        maxWidth = horizontalOffset - (0) * tileScale;
+
 		for (int i = 0; i < width; i++)
 		{
+		    vector<shared_ptr<GameObject> > tempHeightVector(height);
+		    UniformStructure.push_back(tempHeightVector);
 			for (int j = 0; j < height; j++)
 			{
 				int red = getColor(dataLayout, width, i, j, 0);
@@ -1154,6 +1168,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
@@ -1163,6 +1180,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
@@ -1172,6 +1192,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green add a shotgun
 				{
@@ -1188,6 +1211,9 @@ public:
 					shared_ptr<Weapon> shotty = make_shared<Weapon>("shotbun", shotgun, "../resources/", prog, position, tileOrientation, true, 2, false, 1);
 					weapons.push_back(shotty);
 
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
+
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -1203,6 +1229,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 0)) // If the color is red boundry tile
 				{
@@ -1234,6 +1263,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				
 			}
@@ -1709,13 +1741,34 @@ public:
 		}
 	}
 
+	bool GravityCollision2(vec3 futurePosition){
+
+
+
+        int i = (int)((futurePosition.z + UniformStructure.size()) / 2.0f);
+        int j = (int)((futurePosition.x + UniformStructure[0].size()) / 2.0f);
+
+
+        bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= UniformStructure[i][j]->bboxCenter.x * -1.0f && UniformStructure[i][j]->bboxCenter.x * -1.0f + UniformStructure[i][j]->bboxSize.x >= futurePosition.x;
+        bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= UniformStructure[i][j]->bboxCenter.y && UniformStructure[i][j]->bboxCenter.y + UniformStructure[i][j]->bboxSize.y >= futurePosition.y;
+        bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= UniformStructure[i][j]->bboxCenter.z * -1.0f && UniformStructure[i][j]->bboxCenter.z * -1.0f + UniformStructure[i][j]->bboxSize.z >= futurePosition.z;
+
+        if(collisionX && collisionY && collisionZ){
+            return collisionX && collisionY && collisionZ;
+        }
+        else{
+            return false;
+        }
+
+	}
+
 	void ApplyGravity()
 	{
 		if(possessedActor != NULL)
 		{
 			float NewY = possessedActor->position.y + (velocity * deltaTime);
 			vec3 NewPosition = vec3(possessedActor->position.x, NewY, possessedActor->position.z);
-			if (!GravityGroundCollision(NewPosition)) {
+			if (!GravityCollision2(NewPosition)) {
 				possessedActor->position.y = NewY;
 			}
 			else{
