@@ -1744,20 +1744,81 @@ public:
 	bool GravityCollision2(vec3 futurePosition){
 
 
+	    if(possessedActor != NULL) {
 
-        int i = (int)((futurePosition.z + UniformStructure.size()) / 2.0f);
-        int j = (int)((futurePosition.x + UniformStructure[0].size()) / 2.0f);
+            vector<shared_ptr<GameObject> > nearbyBlocks;
+
+            int zSize = UniformStructure.size();
+            int xSize = UniformStructure[0].size();
+
+            int i = (int) (((futurePosition.z * -1.0f) + zSize) / 2.0f);
+            int j = (int) (((futurePosition.x * -1.0f) + xSize) / 2.0f);
+            nearbyBlocks.push_back(UniformStructure[i][j]);
+
+            //Check block to the right
+            if (j + 1 < xSize) {
+                int newJ = j + 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block to the left
+            if (j - 1 >= 0) {
+                int newJ = j - 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block down right
+            if (j + 1 < xSize && i + 1 < zSize) {
+                int newJ = j + 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up right
+            if (j + 1 < xSize && i - 1 >= 0) {
+                int newJ = j + 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up left
+            if (j - 1 >= 0 && i - 1 >= 0) {
+                int newJ = j - 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block down left
+            if (j - 1 >= 0 && i + 1 < zSize) {
+                int newJ = j - 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up
+            if (i - 1 >= 0) {
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+            //Check down block
+            if (i + 1 < zSize) {
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
 
 
-        bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= UniformStructure[i][j]->bboxCenter.x * -1.0f && UniformStructure[i][j]->bboxCenter.x * -1.0f + UniformStructure[i][j]->bboxSize.x >= futurePosition.x;
-        bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= UniformStructure[i][j]->bboxCenter.y && UniformStructure[i][j]->bboxCenter.y + UniformStructure[i][j]->bboxSize.y >= futurePosition.y;
-        bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= UniformStructure[i][j]->bboxCenter.z * -1.0f && UniformStructure[i][j]->bboxCenter.z * -1.0f + UniformStructure[i][j]->bboxSize.z >= futurePosition.z;
+            for(int k = 0; k < nearbyBlocks.size(); k++){
+                bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= nearbyBlocks[k]->bboxCenter.x && nearbyBlocks[k]->bboxCenter.x + nearbyBlocks[k]->bboxSize.x >= futurePosition.x;
+                bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= nearbyBlocks[k]->bboxCenter.y && nearbyBlocks[k]->bboxCenter.y + nearbyBlocks[k]->bboxSize.y >= futurePosition.y;
+                bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= nearbyBlocks[k]->bboxCenter.z && nearbyBlocks[k]->bboxCenter.z + nearbyBlocks[k]->bboxSize.z >= futurePosition.z;
 
-        if(collisionX && collisionY && collisionZ){
-            return collisionX && collisionY && collisionZ;
-        }
-        else{
+                if(collisionX && collisionY && collisionZ){
+                    return collisionX && collisionY && collisionZ;
+                }
+            }
             return false;
+
         }
 
 	}
