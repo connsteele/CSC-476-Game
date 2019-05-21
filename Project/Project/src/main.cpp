@@ -1739,7 +1739,7 @@ public:
 
 		else if (overViewUI.shouldRender()) {
 			ImGui::Begin("over view");
-			ImGui::SetWindowSize(ImVec2(WINDOWSIZE_X, WINDOWSIZE_Y / 8));
+			ImGui::SetWindowSize(ImVec2(WINDOWSIZE_X, WINDOWSIZE_Y / 5.5));
 			ImGui::SetWindowPos(ImVec2(0, 0));
 			ImGuiWindowFlags_NoBackground;
 			ImGuiWindowFlags_NoMove;
@@ -1748,21 +1748,21 @@ public:
 
 			if (whoseTurn == 1) {
 				ImGui::Text("You have %d robots left", numRobotUnits - usedRobotUnits.size());
+				for (int i = 0; i < sceneActorGameObjs.size() - 4; i++) {
+					ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
+					ImGui::ProgressBar(sceneActorGameObjs[i]->health / 2, ImVec2(150, 10), " ");
+				}
 			}
 
 			else if (whoseTurn == 2) {
 				ImGui::Text("You have %d aliens left", numAlienUnits - usedAlienUnits.size());
+				for (int i = 4; i < sceneActorGameObjs.size(); i++) {
+					ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
+					ImGui::ProgressBar(sceneActorGameObjs[i]->health / 2, ImVec2(150, 10), " ");
+				}
 			}
-
-			for (int i=0; i < sceneActorGameObjs.size(); i++) {
-				ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
-			}
-
 
 			ImGui::End();
-			
-			//update and use this after
-			//overViewUI.drawAll();
 		}
 
 		else if (firstPersonUI.shouldRender()) {
@@ -1777,14 +1777,14 @@ public:
 			ImGui::Text("Time Left: %1.f", timeLeft);
 
 			//health bar stuff
-			//get cur player health, input max and min values
-			//ImGui::ProgressBar(fraction, ImVec2(0, 50), HP);
+			ImGui::Text("%s HP: %f", possessedActor->nameObj.c_str(), possessedActor->health);
+			//ImGui::PushStyleColor()
+			ImGui::ProgressBar(possessedActor->health / 2, ImVec2(150, 10), " ");
 
 			ImGui::End();
-
-			//should be used, will update when fixed
-			//firstPersonUI.drawAll();
 		}
+
+		ImGui::ShowStyleEditor();
 
 		if (DEBUG_MODE) {
 			//TODO: if time permitting, add more debug features
