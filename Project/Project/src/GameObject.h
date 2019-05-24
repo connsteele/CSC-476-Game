@@ -15,7 +15,7 @@ class GameObject
 {
 public:
 	std::string nameObj;
-	std::shared_ptr<Shape> objModel;
+	std::shared_ptr<Shape> curObjModel, objModelLOD0, objModelLOD1, objModelLOD2;
 	std::shared_ptr<Program> curShaderProg;
 
 	glm::vec3 position, orientation;
@@ -46,6 +46,8 @@ public:
     bool FireShotgun(glm::vec3 rayDirCent, glm::vec3 rayDirLeft, glm::vec3 rayDirRight, glm::vec3 rayDirDown, glm::vec3 rayDirUp,
                 std::shared_ptr<GameObject> currObjectPointer, glm::vec3 curCamCenter);
 	~GameObject(); // Destroyer
+	void setLODObject(glm::vec3 camPos);
+	void GameObject::pushLODObjs(std::shared_ptr<Shape>& LOD1, std::shared_ptr<Shape>& LOD2);
 
 private:
 	float elapsedTime = 0.0f;

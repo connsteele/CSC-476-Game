@@ -153,7 +153,7 @@ public:
 	std::shared_ptr<Program> texProg;
 
 	// Access OBJ files
-	shared_ptr<Shape> bunnyShape, maRobotShape;
+	shared_ptr<Shape> bunnyShape, maRobotShape, maRobotShapeLOD1, maRobotShapeLOD2;
 	shared_ptr<Shape> cube;
 	shared_ptr<Shape> sphere;
 	shared_ptr<Shape> gun, shotgun;
@@ -990,8 +990,20 @@ public:
 		// Initialize the bunny obj mesh VBOs etc
 		maRobotShape = make_shared<Shape>();
 		maRobotShape->loadMesh(resourceDirectory + "/robot0.obj"); // has vertTexure issues
+
+		//replace filenames with lower LOD versions once made
+		/*maRobotShapeLOD1 = make_shared<Shape>();
+		maRobotShapeLOD2 = make_shared<Shape>();
+		maRobotShapeLOD1->loadMesh(resourceDirectory + "/robot0.obj"); // has vertTexure issues
+		maRobotShapeLOD2->loadMesh(resourceDirectory + "/robot0.obj"); // has vertTexure issues
+		//^^^see above comment//
+		*/
 		maRobotShape->resize();
 		maRobotShape->init();
+		//maRobotShapeLOD1->resize();
+		//maRobotShapeLOD1->init();
+		//maRobotShapeLOD2->resize();
+		//maRobotShapeLOD2->init();
 
 		// Initialize the cube OBJ model
 		cube = make_shared<Shape>();
@@ -1153,7 +1165,7 @@ public:
 					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
-                    AllGameObjects.push_back(terrainTemp);
+					AllGameObjects.push_back(terrainTemp);
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
@@ -1247,11 +1259,11 @@ public:
 		glm::vec3 orientation = glm::vec3(0.0f, 0.0f, 0.0f);
 		// groundbox = make_shared<GameObject>("groundbox", cube, resourceDirectory, prog, position, orientation, false, 0);
 
-
 		// Setup the 1st team 1 robot
 		position = vec3(-5.0f, 0.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> PlayerBun = make_shared<GameObject>("Robot0", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		PlayerBun->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(PlayerBun);
 		robotUnits.push_back(PlayerBun);
         AllGameObjects.push_back(PlayerBun);
@@ -1260,6 +1272,7 @@ public:
 		position = vec3(5.0f, 0.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> NPCBun = make_shared<GameObject>("Robot1", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		NPCBun->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(NPCBun);
 		robotUnits.push_back(NPCBun);
         AllGameObjects.push_back(NPCBun);
@@ -1268,6 +1281,7 @@ public:
 		position = vec3(-25.0f, 1.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot3 = make_shared<GameObject>("Robot2", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		robot3->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(robot3);
 		robotUnits.push_back(robot3);
         AllGameObjects.push_back(robot3);
@@ -1276,6 +1290,7 @@ public:
 		position = vec3(25.0f, 1.1f, -50.0f);
 		orientation = vec3(0.0f, 0.0f, 1.0f);
 		shared_ptr<GameObject> robot4 = make_shared<GameObject>("Robot3", maRobotShape, "../resources/", prog, position, orientation, true, 1, false);
+		robot4->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(robot4);
 		robotUnits.push_back(robot4);
         AllGameObjects.push_back(robot4);
@@ -1285,6 +1300,7 @@ public:
 		position = vec3(-5.0f, 0.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien0 = make_shared<GameObject>("evilRobot0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		alien0->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(alien0);
 		alienUnits.push_back(alien0);
         AllGameObjects.push_back(alien0);
@@ -1294,6 +1310,7 @@ public:
 		position = vec3(5.0f, 0.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien1 = make_shared<GameObject>("evilRobot1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		alien1->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
         AllGameObjects.push_back(alien1);
@@ -1302,6 +1319,7 @@ public:
 		position = vec3(-25.0f, 1.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien2 = make_shared<GameObject>("evilRobot2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		alien2->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
         AllGameObjects.push_back(alien2);
@@ -1310,6 +1328,7 @@ public:
 		position = vec3(25.0f, 1.1f, 50.0f);
 		orientation = vec3(0.0f, 0.0f, -1.0f);
 		shared_ptr<GameObject> alien3 = make_shared<GameObject>("evilRobot3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
+		alien3->pushLODObjs(maRobotShapeLOD1, maRobotShapeLOD2);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 		AllGameObjects.push_back(alien3);
@@ -1422,8 +1441,7 @@ public:
 
 		prog->bind(); // Bind the Simple Shader
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
-
-
+			vec3 camPos = vec3(curCamCenter.x, curCamCenter.y, curCamCenter.z);
 			if(sceneActorGameObjs[i]->isRender == true){
 				M->pushMatrix();
 				M->loadIdentity();
@@ -1465,6 +1483,7 @@ public:
 					glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
 					glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+					sceneActorGameObjs[i]->setLODObject(vec3(curCamCenter.x, curCamCenter.y, curCamCenter.z));
 					sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
 				}
 				
@@ -1658,7 +1677,7 @@ public:
 	void switchTurn() {
 		if (whoseTurn == 1) {
 			// if all units used clear array and allow them to be used again
-			if (usedRobotUnits.size() >= numRobotUnits) {
+			if (usedRobotUnits.size() == numRobotUnits) {
 				for(int i = 0; i < usedRobotUnits.size(); i++){
 					usedRobotUnits[i]->isUsed = false;
 				}
@@ -1669,7 +1688,7 @@ public:
 		}
 		else if (whoseTurn == 2) {
 			// if all units used clear array and allow them to be used again
-			if (usedAlienUnits.size() >= numAlienUnits) {
+			if (usedAlienUnits.size() == numAlienUnits) {
 				
 				//Walkthrough used array to set bools back to unused
 				for(int i = 0; i < usedAlienUnits.size(); i++){
@@ -1739,30 +1758,34 @@ public:
 
 		else if (overViewUI.shouldRender()) {
 			ImGui::Begin("over view");
-			ImGui::SetWindowSize(ImVec2(WINDOWSIZE_X, WINDOWSIZE_Y / 8));
+			ImGui::SetWindowSize(ImVec2(WINDOWSIZE_X, WINDOWSIZE_Y / 5.5));
 			ImGui::SetWindowPos(ImVec2(0, 0));
 			ImGuiWindowFlags_NoBackground;
 			ImGuiWindowFlags_NoMove;
 
 			ImGui::Text("Take Your Turn Player %d !!!", whoseTurn);
+			ImGui::Text("Cam Position: {%f, %f, %f}", curCamCenter.x, curCamCenter.y, curCamCenter.z);
+
 
 			if (whoseTurn == 1) {
 				ImGui::Text("You have %d robots left", numRobotUnits - usedRobotUnits.size());
+				for (int i = 0; i < sceneActorGameObjs.size() - 4; i++) {
+					ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
+					ImGui::Text("%s Position: {%f, %f, %f}", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->position.x, sceneActorGameObjs[i]->position.y, sceneActorGameObjs[i]->position.z);
+					ImGui::ProgressBar(sceneActorGameObjs[i]->health / 2, ImVec2(150, 10), " ");
+				}
 			}
 
 			else if (whoseTurn == 2) {
 				ImGui::Text("You have %d aliens left", numAlienUnits - usedAlienUnits.size());
+				for (int i = 4; i < sceneActorGameObjs.size(); i++) {
+					ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
+					ImGui::Text("%s Position: {%f, %f, %f}", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->position.x, sceneActorGameObjs[i]->position.y, sceneActorGameObjs[i]->position.z);
+					ImGui::ProgressBar(sceneActorGameObjs[i]->health / 2, ImVec2(150, 10), " ");
+				}
 			}
-
-			for (int i=0; i < sceneActorGameObjs.size(); i++) {
-				ImGui::Text("%s HP: %f", sceneActorGameObjs[i]->nameObj.c_str(), sceneActorGameObjs[i]->health);
-			}
-
 
 			ImGui::End();
-			
-			//update and use this after
-			//overViewUI.drawAll();
 		}
 
 		else if (firstPersonUI.shouldRender()) {
@@ -1774,17 +1797,21 @@ public:
 
 			float curTime = glfwGetTime();
 			float timeLeft = turnLength - (curTime - turnStartTime);
+			ImGui::Text("Cam Position: {%f, %f, %f}", curCamCenter.x, curCamCenter.y, curCamCenter.z);
+
 			ImGui::Text("Time Left: %1.f", timeLeft);
 
 			//health bar stuff
-			//get cur player health, input max and min values
-			//ImGui::ProgressBar(fraction, ImVec2(0, 50), HP);
+			ImGui::Text("%s HP: %f", possessedActor->nameObj.c_str(), possessedActor->health);
+			ImGui::Text("Position: {%f, %f, %f}", possessedActor->position.x, possessedActor->position.y, possessedActor->position.z);
+
+			//ImGui::PushStyleColor()
+			ImGui::ProgressBar(possessedActor->health / 2, ImVec2(150, 10), " ");
 
 			ImGui::End();
-
-			//should be used, will update when fixed
-			//firstPersonUI.drawAll();
 		}
+
+		ImGui::ShowStyleEditor();
 
 		if (DEBUG_MODE) {
 			//TODO: if time permitting, add more debug features

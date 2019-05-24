@@ -2,11 +2,10 @@
 
 // Connor Steele and Chris Gix Game Object Implementation
 
-
 GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team, bool isStaticGeom)
 {
 	this->nameObj = gameObjName;
-	this->objModel = objModel;
+	this->curObjModel = objModelLOD0 = objModel;
 	this->hitByPlayer = false;
 
 	//-- Setup geometry of the bounding box
@@ -39,9 +38,27 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	isRender = true;
 }
 
+void GameObject::pushLODObjs(std::shared_ptr<Shape>& LOD1, std::shared_ptr<Shape>& LOD2) {
+	objModelLOD1 = LOD1;
+	objModelLOD2 = LOD2;
+}
+
+void GameObject::setLODObject(glm::vec3 camPos) {
+	float distance = glm::distance(camPos, position);
+
+	if (distance == -1)
+		curObjModel = objModelLOD2;
+
+	else if (distance == -2)
+		curObjModel = objModelLOD1;
+
+	else
+		curObjModel = objModelLOD0;
+}
+
 void GameObject::DrawGameObj()
 {
-	objModel->draw(curShaderProg);
+	curObjModel->draw(curShaderProg);
 	renderBbox();
 }
 
@@ -144,7 +161,7 @@ void GameObject::initBbox()
 	
 
 	// Get the position buffer from the model
-	std::vector<float> modelVertPosBuf = objModel->getPosBuf();
+	std::vector<float> modelVertPosBuf = curObjModel->getPosBuf();
 
 	// Set up initial Values
 	min_x = max_x = modelVertPosBuf[0];
