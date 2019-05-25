@@ -53,6 +53,10 @@ mat4 p1_bboxTransform;
 GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan;
 std::shared_ptr<Program> progTerrain;
 
+// shadow stuff
+shared_ptr<Program> DepthProg;
+shared_ptr<Program> ShadowProg;
+
 // --- Variables for Geometry
 GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
 
@@ -180,6 +184,11 @@ public:
 
 	// Data necessary to give our triangle to OpenGL
 	GLuint CylVertexBufferID;
+
+	//shadow stuff
+	GLuint depthMapFBO;
+	const GLuint S_WIDTH = 1024, S_HEIGHT = 1024;
+	GLuint depthMap;
 
 	// bool FirstTime = true;
 
@@ -778,43 +787,43 @@ public:
 
 
 	//Function From Program 3 webpage, case 3 is my implementation for prob 2b
-	void SetMaterial(int i) {
+	void SetMaterial(int i, shared_ptr<Program> shader) {
 		switch (i) {
 		case 0: // shiny blue plastic
-			glUniform3f(prog->getUniform("MatAmb"), 0.02, 0.04, 0.2);
-			glUniform3f(prog->getUniform("MatDif"), 0.0, 0.16, 0.9);
-			glUniform3f(prog->getUniform("MatSpec"), 0.14, 0.2, 0.8);
-			glUniform1f(prog->getUniform("shine"), 120.0);
+			glUniform3f(shader->getUniform("MatAmb"), 0.02, 0.04, 0.2);
+			glUniform3f(shader->getUniform("MatDif"), 0.0, 0.16, 0.9);
+			glUniform3f(shader->getUniform("MatSpec"), 0.14, 0.2, 0.8);
+			glUniform1f(shader->getUniform("shine"), 120.0);
 			break;
 		case 1: // flat grey
-			glUniform3f(prog->getUniform("MatAmb"), 0.13, 0.13, 0.14);
-			glUniform3f(prog->getUniform("MatDif"), 0.3, 0.3, 0.4);
-			glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.3, 0.4);
-			glUniform1f(prog->getUniform("shine"), 4.0);
+			glUniform3f(shader->getUniform("MatAmb"), 0.13, 0.13, 0.14);
+			glUniform3f(shader->getUniform("MatDif"), 0.3, 0.3, 0.4);
+			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.3, 0.4);
+			glUniform1f(shader->getUniform("shine"), 4.0);
 			break;
 		case 2: // brass
-			glUniform3f(prog->getUniform("MatAmb"), 0.3294, 0.2235, 0.02745);
-			glUniform3f(prog->getUniform("MatDif"), 0.7804, 0.5686, 0.11373);
-			glUniform3f(prog->getUniform("MatSpec"), 0.9922, 0.941176, 0.80784);
-			glUniform1f(prog->getUniform("shine"), 27.9);
+			glUniform3f(shader->getUniform("MatAmb"), 0.3294, 0.2235, 0.02745);
+			glUniform3f(shader->getUniform("MatDif"), 0.7804, 0.5686, 0.11373);
+			glUniform3f(shader->getUniform("MatSpec"), 0.9922, 0.941176, 0.80784);
+			glUniform1f(shader->getUniform("shine"), 27.9);
 			break;
 		case 3: //Mine: red
-			glUniform3f(prog->getUniform("MatAmb"), 0.15, 0.17, 0.12);
-			glUniform3f(prog->getUniform("MatDif"), 0.83, 0.2, 0.2);
-			glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(prog->getUniform("shine"), 20.0);
+			glUniform3f(shader->getUniform("MatAmb"), 0.15, 0.17, 0.12);
+			glUniform3f(shader->getUniform("MatDif"), 0.83, 0.2, 0.2);
+			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
+			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		case 4: //Mine: green
-			glUniform3f(prog->getUniform("MatAmb"), 0.15, 0.17, 0.12);
-			glUniform3f(prog->getUniform("MatDif"), 0.13, 0.8, 0.2);
-			glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(prog->getUniform("shine"), 20.0);
+			glUniform3f(shader->getUniform("MatAmb"), 0.15, 0.17, 0.12);
+			glUniform3f(shader->getUniform("MatDif"), 0.13, 0.8, 0.2);
+			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
+			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		case 5: // White
-			glUniform3f(prog->getUniform("MatAmb"), 1.0, 1.0, 1.0);
-			glUniform3f(prog->getUniform("MatDif"), 1.0, 1.0, 1.0);
-			glUniform3f(prog->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(prog->getUniform("shine"), 20.0);
+			glUniform3f(shader->getUniform("MatAmb"), 1.0, 1.0, 1.0);
+			glUniform3f(shader->getUniform("MatDif"), 1.0, 1.0, 1.0);
+			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
+			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		}
 	}
@@ -878,6 +887,58 @@ public:
 		progTerrain->addAttribute("vertTex");
 		progTerrain->addUniform("lightSource"); //lighting uniform
 
+		//shadow stuff
+		DepthProg = make_shared<Program>();
+		DepthProg->setVerbose(true);
+		DepthProg->setShaderNames(resourceDirectory + "/depth_vert.glsl", resourceDirectory + "/depth_frag.glsl");
+		if (!DepthProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		/// Add uniform and attributes to each of the programs
+		DepthProg->addUniform("LP");
+		DepthProg->addUniform("LV");
+		DepthProg->addUniform("P");
+		DepthProg->addUniform("M");
+		DepthProg->addUniform("V");
+		DepthProg->addUniform("eye");
+		DepthProg->addUniform("lightSource");
+		DepthProg->addAttribute("vertPos");
+		//un-needed, but easier then modifying shape
+		DepthProg->addAttribute("vertNor");
+		DepthProg->addAttribute("vertTex");
+
+		//shadow stuff
+		ShadowProg = make_shared<Program>();
+		ShadowProg->setVerbose(true);
+		ShadowProg->setShaderNames(resourceDirectory + "/shadow_vert.glsl", resourceDirectory + "/shadow_frag.glsl");
+
+		if (!ShadowProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		ShadowProg->addUniform("P");
+		ShadowProg->addUniform("M");
+		ShadowProg->addUniform("V");
+		ShadowProg->addUniform("eye");
+		ShadowProg->addUniform("LS");
+		ShadowProg->addUniform("lightDir");
+		ShadowProg->addUniform("lightSource");
+		ShadowProg->addAttribute("vertPos");
+		ShadowProg->addAttribute("vertNor");
+		ShadowProg->addAttribute("vertTex");
+		ShadowProg->addUniform("Texture0");
+		ShadowProg->addUniform("shadowDepth");
+		ShadowProg->addUniform("MatAmb");
+		ShadowProg->addUniform("MatDif");
+		ShadowProg->addUniform("MatSpec");
+		ShadowProg->addUniform("shine");
+
+		initShadow();
 	}
 	
 	void initPlayerBbox()
@@ -956,6 +1017,31 @@ public:
 		initOverViewUI(window);
 		initFirstPersonUI(window);
 		initMainMenuUI(window);
+	}
+
+	void initShadow() {
+
+		//generate the FBO for the shadow depth
+		glGenFramebuffers(1, &depthMapFBO);
+
+		//generate the texture
+		glGenTextures(1, &depthMap);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, S_WIDTH, S_HEIGHT,
+			0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+		//bind with framebuffer's depth buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	}
 
 	void setupCoverCubeLocations()
@@ -1389,13 +1475,14 @@ public:
 		glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
-		SetMaterial(3);
+		SetMaterial(3, prog);
 		//draw
 		//cube->draw(prog);
-		groundbox->DrawGameObj();
+		groundbox->DrawGameObj(prog);
 		M->popMatrix();
 
 		prog->unbind();
+		std::cout << "Ground plane unbind" << std::endl;
 
 		return;
 	}
@@ -1417,10 +1504,108 @@ public:
 		// Do logic here!
 	}
 
-	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView, int offsetX, int offsetZ)
-	{	
+	//shadow stuff
+	mat4 SetOrthoMatrix(shared_ptr<Program> curShade) {
+		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 30.0f);
+		//fill in the glUniform call to send to the right shader!
+		glUniformMatrix4fv(curShade->getUniform("LP"), 1, GL_FALSE, value_ptr(ortho));
+		return ortho;
+	}
 
-		prog->bind(); // Bind the Simple Shader
+	//shadow stuff
+	mat4 SetLightView(shared_ptr<Program> curShade, vec3 pos, vec3 LA, vec3 up) {
+		mat4 Cam = lookAt(pos, LA, up);
+		//fill in the glUniform call to send to the right shader!
+		glUniformMatrix4fv(curShade->getUniform("LV"), 1, GL_FALSE, value_ptr(Cam));
+		return Cam;
+	}
+
+	//shadow stuff
+	void SetProjectionMatrix(shared_ptr<Program> curShade) {
+		int width, height;
+		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+		float aspect = width / (float)height;
+		mat4 Projection = perspective(radians(50.0f), aspect, 0.1f, 100.0f);
+		glUniformMatrix4fv(curShade->getUniform("P"), 1, GL_FALSE, value_ptr(Projection));
+	}
+
+	//shadow stuff
+	void renderShadows(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P) {
+		mat4 LS;
+		vec3 g_light = vec3(0, 10, 0);
+
+		// Get current frame buffer size.
+		int width, height;
+		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+
+		//set up light's depth map
+		glViewport(0, 0, S_WIDTH, S_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glCullFace(GL_FRONT);
+		
+		//set up shadow shader
+		//render scene
+		DepthProg->bind();
+
+		mat4 LP = SetOrthoMatrix(DepthProg);
+		mat4 LV = SetLightView(DepthProg, g_light, vec3(0, 0, 0), vec3(0, 1, 0));
+
+		LS = LP * LV;
+
+		//ToDo shadow : find way to replace
+		//drawScene(DepthProg, 0, 0);
+		renderSceneActors(M, P, DepthProg, false);
+		renderTerrain(M, P, DepthProg, false);
+		renderWeapons(M, P, DepthProg, false);
+		 
+
+
+
+		DepthProg->unbind();
+		std::cout << "Depth unbind" << std::endl;
+		glCullFace(GL_BACK);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+
+		glViewport(0, 0, width, height);
+		// Clear framebuffer.
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		
+		//now render the scene like normal
+		//set up shadow shader
+		ShadowProg->bind();
+		/* also set up light depth map */
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
+		glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
+		//render scene
+		SetProjectionMatrix(ShadowProg);
+		//attemp to set V matrix using our cam setup
+		glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+		glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+
+		//ToDo shadow : find way to replace
+		//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+		renderSceneActors(M, P, ShadowProg, true);
+		renderWeapons(M, P, ShadowProg, true);
+		renderTerrain(M, P, ShadowProg, true);
+		// render all the actors in the scene
+		// Render all objs in the terrain
+		
+
+		ShadowProg->unbind();
+		std::cout << "Shadow unbind" << std::endl;
+		
+	}
+
+	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	{	
+		//shader bind by caller
+		//shader->bind(); // Bind the passed in Shader
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
 
 
@@ -1441,31 +1626,31 @@ public:
 				//	//M->rotate(180.0f, vec3(0, 1, 0));
 				//	// glUniform1f(prog->getUniform("hit"), 1); //old method
 				//}
-				if (sceneActorGameObjs[i]->team == 1)
+				if (TexOn && sceneActorGameObjs[i]->team == 1)
 				{
-					SetMaterial(3);
+					SetMaterial(3, shader);
 				}
-				else if (sceneActorGameObjs[i]->team == 2)
+				else if (TexOn && sceneActorGameObjs[i]->team == 2)
 				{
-					SetMaterial(4);
+					SetMaterial(4, shader);
 				}
 
 				// Set the color to grey if the units have been used
-				if (sceneActorGameObjs[i]->isUsed == true )
+				if (TexOn && sceneActorGameObjs[i]->isUsed == true)
 				{
-					SetMaterial(1);
+					SetMaterial(1, shader);
 				}
 
 				// Only draw units that aren't dead
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
-					glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-					glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
-					sceneActorGameObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
+					glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+					sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 				}
 				
 
@@ -1474,42 +1659,49 @@ public:
 			
 		}
 
-
-		prog->unbind(); // Unbind the Simple Shader
+		//shader bind by caller
+		//shader->unbind(); // Unbind the passed in Shader
 
 		return;
 
 	}
 
-	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P)
+	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
 	{
 		static float rotato = 0.0f;
-		prog->bind();
+		//shader bind by caller
+		//shader->bind();
 
 		for (int i = 0; i < weapons.size(); i++)
 		{
 			M->pushMatrix();
-			SetMaterial(2); // Render the weapons as gold
+			if (TexOn)
+			{
+				SetMaterial(2, shader); // Render the weapons as gold
+			}
+			
 			weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 			
 			M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
-			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
-			weapons[i]->DrawGameObj(); // Draw the bunny model and render bbox
+			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+			weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 
 			M->popMatrix();
 		}
 
-		prog->unbind();
+		//shader bind by caller
+		//shader->unbind();
 	}
 
-	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P)
+	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
 	{
-		progTerrain->bind();
+		//shader bind by caller
+		//shader->bind();
 
 		
 		for (int i = 0; i < sceneTerrainObjs.size(); i++)
@@ -1521,58 +1713,63 @@ public:
 			sceneTerrainObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 
 			// If terrain
-			if (sceneTerrainObjs[i]->isGroundTile)
+			if (TexOn)
 			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Floor);
-				//SetMaterial(1);
-				//M->scale(vec3(2.f, 2.f, 2.f));
+				if (sceneTerrainObjs[i]->isGroundTile)
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+					//SetMaterial(1);
+					//M->scale(vec3(2.f, 2.f, 2.f));
+				}
+				else if (sceneTerrainObjs[i]->isUpperTile)
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+					//SetMaterial(2);
+					//M->scale(vec3(2.f, 2.f, 2.f));
+				}
+				else if (sceneTerrainObjs[i]->isCoverTile)
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+					//SetMaterial(3);
+					//M->scale(vec3(2.f, 2.f, 2.f));
+				}
+				else if (sceneTerrainObjs[i]->isJumpTile)
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+					//SetMaterial(4);
+					//M->scale(vec3(2.f, 2.f, 2.f));
+				}
+				else if (sceneTerrainObjs[i]->isUpperCoverTile)
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+					//SetMaterial(3);
+					//M->scale(vec3(2.f, 2.f, 2.f));
+				}
+				else if (sceneTerrainObjs[i]->isBoundingTile)
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+				}
 			}
-			else if (sceneTerrainObjs[i]->isUpperTile)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Hex);
-				//SetMaterial(2);
-				//M->scale(vec3(2.f, 2.f, 2.f));
-			}
-			else if (sceneTerrainObjs[i]->isCoverTile)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-				//SetMaterial(3);
-				//M->scale(vec3(2.f, 2.f, 2.f));
-			}
-			else if (sceneTerrainObjs[i]->isJumpTile)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Hex);
-				//SetMaterial(4);
-				//M->scale(vec3(2.f, 2.f, 2.f));
-			}
-			else if (sceneTerrainObjs[i]->isUpperCoverTile)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-				//SetMaterial(3);
-				//M->scale(vec3(2.f, 2.f, 2.f));
-			}
-			else if (sceneTerrainObjs[i]->isBoundingTile)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-			}
+			
 
-			glUniformMatrix4fv(progTerrain->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(progTerrain->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(progTerrain->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(progTerrain->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniform3f(progTerrain->getUniform("lightSource"), 0, 80, 0);
-			sceneTerrainObjs[i]->DrawGameObj(); // Draw the bunny model and render bbox
+			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+			sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 			M->popMatrix();
 		}
 
-		progTerrain->unbind();
+		//shader bind by caller
+		//shader->unbind();
 	}
 
 	void interpolateCamera(float interp)
@@ -1612,15 +1809,6 @@ public:
 		}
 
 		return;
-	}
-
-	void jumpPad(shared_ptr<GameObject> currObjectPointer) {
-		vec3 orient;
-		orient.x = radius * cos(phi)*cos(theta);
-		orient.y = radius * sin(phi);
-		orient.z = radius * cos(phi)*sin(theta);
-
-
 	}
 
 	void updateGameLogic()
@@ -1925,9 +2113,13 @@ public:
 
 		M->pushMatrix();
 		//checkAllGameObjects();
-		renderSceneActors(M, P, isOverheadView, 0, 0); // render all the actors in the scene
-		renderTerrain(M, P); // Render all objs in the terrain
-		renderWeapons(M, P);
+
+		//ToDo shadows: may need to wrap other render calls to get shadows?
+		renderShadows(M, P);
+		//renderSceneActors(M, P, ShadowProg); // render all the actors in the scene
+		//renderTerrain(M, P, ShadowProg); // Render all objs in the terrain
+		//renderWeapons(M, P, ShadowProg);
+		
 		checkAllGameObjects();
 		//bunBun->DoCollisions(groundbox);
 		M->popMatrix();
@@ -1946,7 +2138,7 @@ public:
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
-				SetMaterial(1); // Flat Grey
+				SetMaterial(1, prog); // Flat Grey
 				gun->draw(prog);
 				M->popMatrix();
 			}
@@ -1959,7 +2151,7 @@ public:
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
-				SetMaterial(1); // Flat Grey
+				SetMaterial(1, prog); // Flat Grey
 				shotgun->draw(prog);
 				M->popMatrix();
 			}
@@ -1967,7 +2159,7 @@ public:
 
 			// Draw the Crosshair
 			M->pushMatrix();
-			SetMaterial(5); //Red
+			SetMaterial(5, prog); //Red
 			// Draw the horizontal line
 			M->translate(vec3(0.0f, 0.0f, -15.0f));
 			M->scale(vec3(0.5f, 0.1f, 0.1f));
@@ -1992,6 +2184,7 @@ public:
 			M->popMatrix();
 
 			prog->unbind();
+			std::cout << "crosshair unbind" << std::endl;
 			
 		}
 

@@ -39,9 +39,9 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	isRender = true;
 }
 
-void GameObject::DrawGameObj()
+void GameObject::DrawGameObj(std::shared_ptr<Program> shader)
 {
-	objModel->draw(curShaderProg);
+	objModel->draw(shader);
 	renderBbox();
 }
 

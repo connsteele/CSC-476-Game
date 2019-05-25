@@ -37,7 +37,7 @@ public:
 	bool isUsed;
 
 	GameObject(const std::string& name, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team, bool isStaticGeom);
-	void DrawGameObj();
+	void DrawGameObj(std::shared_ptr<Program> shader);
 	void renderBbox();
 	void initBbox();
 	void step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up);
