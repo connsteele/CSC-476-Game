@@ -60,6 +60,12 @@ shared_ptr<Program> ShadowProg;
 // --- Variables for Geometry
 GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
 
+// --- Globals for bullet rendering
+shared_ptr<GameObject> renderBulletObj = NULL;
+shared_ptr<GameObject> hitBulletObj = NULL;
+vec3 bulletStartPos;
+
+
 //--- Vector of all actor game objects plus arrays of player units and enemy units
 vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs, AllGameObjects, usedRobotUnits, usedAlienUnits;
 vector<shared_ptr<Weapon> > weapons;
@@ -502,38 +508,40 @@ public:
 
 
 	void TeamOneRayTrace(vec3 ray_wor){
-        for (int i = 0; i < robotUnits.size(); i++) {
+		if (possessedActor == NULL) {
+			for (int i = 0; i < robotUnits.size(); i++) {
 
 
-            GameObject currObject = *robotUnits[i];
+				GameObject currObject = *robotUnits[i];
 
-            bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
+				bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
 
-            if (isClicked && possessedActor == NULL && isOverheadView) {
+				if (isClicked && possessedActor == NULL && isOverheadView) {
 
-				// Check if unit has been used (check if not empty first)
-				if(!usedRobotUnits.empty()){
-					if(find(usedRobotUnits.begin(), usedRobotUnits.end(), robotUnits[i]) == usedRobotUnits.end()){
+					// Check if unit has been used (check if not empty first)
+					if (!usedRobotUnits.empty()) {
+						if (find(usedRobotUnits.begin(), usedRobotUnits.end(), robotUnits[i]) == usedRobotUnits.end()) {
+							robotUnits[i]->isPosessed = true;
+							possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
+							usedRobotUnits.push_back(robotUnits[i]);
+							robotUnits[i]->isUsed = true;
+						}
+					}
+					// Add first unit to array
+					else {
 						robotUnits[i]->isPosessed = true;
-                		possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
+						possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
 						usedRobotUnits.push_back(robotUnits[i]);
 						robotUnits[i]->isUsed = true;
 					}
-				}
-				// Add first unit to array
-				else{
-					robotUnits[i]->isPosessed = true;
-                	possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
-					usedRobotUnits.push_back(robotUnits[i]);
-					robotUnits[i]->isUsed = true;
+
 				}
 
-            }
+			}
+		}
 
-        }
-
-        //Only run weapon loop of possessed actor exists
-        if(possessedActor != NULL){
+        //Only run weapon loop if possessed actor exists
+        else if(possessedActor != NULL){
 
             vector<shared_ptr<GameObject> > HitObjects;
 
@@ -572,6 +580,11 @@ public:
 
 				vec3 ray_center = GenerateRay(posX, posY);
 
+				//Generate bunny bullet
+				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, false, 0, false);
+				renderBulletObj = tempBullet;
+				renderBulletObj->objVelocity = 15.0f;
+
                 for(int i = 0; i < AllGameObjects.size(); i++){
                     bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
@@ -594,7 +607,11 @@ public:
                     minDistanceIndex = i;
                 }
             }
+
             if(HitObjects.size() != 0) {
+
+				//Set Object Bullet hit for rendering collision
+				hitBulletObj = HitObjects[minDistanceIndex];
 
                 if (HitObjects[minDistanceIndex]->team == 2 && !isOverheadView) {
                     //HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
@@ -605,47 +622,52 @@ public:
 					}
                 }
             }
+			else {
+				bulletStartPos = curCamCenter;
+			}
 
         }
 	}
 
 	void TeamTwoRayTrace(vec3 ray_wor){
-        for (int i = 0; i < alienUnits.size(); i++) {
+		if (possessedActor == NULL) {
+			for (int i = 0; i < alienUnits.size(); i++) {
 
 
-            GameObject currObject = *alienUnits[i];
+				GameObject currObject = *alienUnits[i];
 
-            bool isClicked = RayTraceCamera(ray_wor, alienUnits[i]);
+				bool isClicked = RayTraceCamera(ray_wor, alienUnits[i]);
 
-            if (isClicked && possessedActor == NULL && isOverheadView) {
+				if (isClicked && possessedActor == NULL && isOverheadView) {
 
-				// check if clicked object is already in array (check if empty first)
-                if(!usedAlienUnits.empty()){
-					if(find(usedAlienUnits.begin(), usedAlienUnits.end(), alienUnits[i]) == usedAlienUnits.end()){
+					// check if clicked object is already in array (check if empty first)
+					if (!usedAlienUnits.empty()) {
+						if (find(usedAlienUnits.begin(), usedAlienUnits.end(), alienUnits[i]) == usedAlienUnits.end()) {
+							alienUnits[i]->isPosessed = true;
+							possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
+							usedAlienUnits.push_back(alienUnits[i]);
+							alienUnits[i]->isUsed = true;
+						}
+						else
+						{
+							printf("Actor was already used, pick a different teammate");
+						}
+					}
+					// Add first unit to array
+					else {
 						alienUnits[i]->isPosessed = true;
-                		possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
+						possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
 						usedAlienUnits.push_back(alienUnits[i]);
 						alienUnits[i]->isUsed = true;
 					}
-					else
-					{
-						printf("Actor was already used, pick a different teammate");
-					}
-				}
-				// Add first unit to array
-				else{
-					alienUnits[i]->isPosessed = true;
-                	possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
-					usedAlienUnits.push_back(alienUnits[i]);
-					alienUnits[i]->isUsed = true;
+
 				}
 
-            }
-
-        }
+			}
+		}
 
         //Only run weapon loop of possessed actor exists
-        if(possessedActor != NULL){
+        else if(possessedActor != NULL){
 
             vector<shared_ptr<GameObject> > HitObjects;
 
@@ -681,6 +703,14 @@ public:
 				float posY = height / 2.0f; //Magic Number
 
 				vec3 ray_center = GenerateRay(posX, posY);
+
+
+				//Generate bunny bullet
+				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, false, 0, false);
+				renderBulletObj = tempBullet;
+				renderBulletObj->objVelocity = 15.0f;
+
+
                 for(int i = 0; i < AllGameObjects.size(); i++){
                     bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
@@ -703,7 +733,12 @@ public:
                     minDistanceIndex = i;
                 }
             }
+
+			
+
             if(HitObjects.size() != 0) {
+				//Set Object Bullet hit for rendering collision
+				hitBulletObj = HitObjects[minDistanceIndex];
 
                 if (HitObjects[minDistanceIndex]->team == 1 && !isOverheadView) {
                     HitObjects[minDistanceIndex]->health -= 1.0f;
@@ -713,6 +748,9 @@ public:
 					}
                 }
             }
+			else {
+				bulletStartPos = curCamCenter;
+			}
 
         }
 	}
@@ -1086,10 +1124,10 @@ public:
 		cube->init();
 
 
-		// Initialize the sphere OBJ model
+		// Initialize the sphere OBJ models
 		sphere = make_shared<Shape>();
-		sphere->loadMesh(resourceDirectory + "/sphere.obj");
-		sphere->resize();
+		sphere->loadMesh(resourceDirectory + "/smallSphere.obj");
+		// sphere->resize();
 		sphere->init();
 
 		// Initialize the pistol OBJ model
@@ -1558,8 +1596,7 @@ public:
 		renderSceneActors(M, P, DepthProg, false);
 		renderTerrain(M, P, DepthProg, false);
 		renderWeapons(M, P, DepthProg, false);
-		 
-
+		
 
 
 		DepthProg->unbind();
@@ -1600,6 +1637,52 @@ public:
 		ShadowProg->unbind();
 		std::cout << "Shadow unbind" << std::endl;
 		
+	}
+
+
+	void renderBullet(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader)
+	{
+
+		if (renderBulletObj != NULL) {
+
+
+			M->pushMatrix();
+			M->loadIdentity();
+
+			SetMaterial(1, shader);
+
+			renderBulletObj->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+
+			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+
+			renderBulletObj->DrawGameObj(shader); // Draw the bunny model and render bbox
+
+			M->popMatrix();
+
+
+			// -- Hit detection
+			if (hitBulletObj != NULL) {
+
+				if (checkCollisions(renderBulletObj, hitBulletObj)) {
+					renderBulletObj = NULL;
+					hitBulletObj = NULL;
+				}
+			}
+			else {
+				if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
+					renderBulletObj = NULL;
+				}
+			}
+
+
+		}
+		return;
+
 	}
 
 	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
@@ -2116,6 +2199,11 @@ public:
 
 		//ToDo shadows: may need to wrap other render calls to get shadows?
 		renderShadows(M, P);
+
+		// Render a bullet
+		prog->bind();
+		renderBullet(M, P, prog);
+		prog->unbind();
 		//renderSceneActors(M, P, ShadowProg); // render all the actors in the scene
 		//renderTerrain(M, P, ShadowProg); // Render all objs in the terrain
 		//renderWeapons(M, P, ShadowProg);

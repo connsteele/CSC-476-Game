@@ -50,7 +50,7 @@ void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr
 	// DoCollisions(M);
 
 	//-- Calculate new position and translate the model
-	position += 0.0f * orientation * dt;
+	position += objVelocity * orientation * dt;
 	//printf("Obj Current Pos: x: %f y: %f z: %f\n", position.x, position.y, position.z);
 	M->translate(position);
 
