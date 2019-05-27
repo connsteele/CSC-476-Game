@@ -42,6 +42,7 @@ int p1Collisions = 0;
 
 // -- Variables for possessed actor
 shared_ptr<GameObject> possessedActor = NULL;
+shared_ptr<GameObject> possessedBullet = NULL;
 
 //--- Variables for players bbox 
 GLuint p1_vbo_vertices;
@@ -1644,7 +1645,11 @@ public:
 	{
 
 		if (renderBulletObj != NULL) {
-
+			// Set the possesed actor so the camera follows the bullet
+			if (possessedBullet != renderBulletObj)
+			{
+				possessedBullet = renderBulletObj;
+			}
 
 			M->pushMatrix();
 			M->loadIdentity();
@@ -1671,11 +1676,21 @@ public:
 				if (checkCollisions(renderBulletObj, hitBulletObj)) {
 					renderBulletObj = NULL;
 					hitBulletObj = NULL;
+
+					// Go to the overhead view
+					isOverheadView = true;
+					isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+					possessedBullet = NULL;
 				}
 			}
 			else {
 				if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
 					renderBulletObj = NULL;
+
+					// Go to the overhead view
+					isOverheadView = true;
+					isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+					possessedBullet = NULL;
 				}
 			}
 
@@ -1954,8 +1969,8 @@ public:
 		}
 
 		//Snap user back to overhead view
-		isOverheadView = true;
-		isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+		// isOverheadView = true; // This gets set in bullet shit now
+		// isCaptureCursor = !isCaptureCursor; // turn the cursor back on // This gets set in bullet shit now
 		firstPersonUI.setRender(false);
 		overViewUI.setRender(true);
 		//reset turn timer
@@ -2104,7 +2119,12 @@ public:
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView) // Possession
 		{
-			if (possessedActor)
+			if (possessedBullet)
+			{
+				curCamEye = possessedBullet->position + vec3(0.0f, 2.0f, 0.0f);
+				// possessedActor = NULL;
+			}
+			else if (possessedActor)
 			{
 				curCamEye = possessedActor->position;
 			}
@@ -2213,7 +2233,7 @@ public:
 		M->popMatrix();
 
 		// ----- Draw the weapon in first person ------
-		if (!isOverheadView)
+		if (!isOverheadView && !possessedBullet)
 		{
 			// Draw the Gun
 			glClear(GL_DEPTH_BUFFER_BIT); // Clear the depth buffer so the weapon is drawn over all other geometry
