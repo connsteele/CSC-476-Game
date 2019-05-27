@@ -63,7 +63,8 @@ GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
 
 // --- Globals for bullet rendering
 shared_ptr<GameObject> renderBulletObj = NULL;
-shared_ptr<GameObject> hitBulletObj = NULL;
+float hitObjectDistance;
+bool didHitObject = false;
 vec3 bulletStartPos;
 
 
@@ -582,9 +583,9 @@ public:
 				vec3 ray_center = GenerateRay(posX, posY);
 
 				//Generate bunny bullet
-				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, false, 0, false);
+				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, true, 0, false);
 				renderBulletObj = tempBullet;
-				renderBulletObj->objVelocity = 15.0f;
+				renderBulletObj->objVelocity = 10.0f;
 
                 for(int i = 0; i < AllGameObjects.size(); i++){
                     bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
@@ -612,7 +613,9 @@ public:
             if(HitObjects.size() != 0) {
 
 				//Set Object Bullet hit for rendering collision
-				hitBulletObj = HitObjects[minDistanceIndex];
+				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
+				bulletStartPos = possessedActor->position;
+				didHitObject = true;
 
                 if (HitObjects[minDistanceIndex]->team == 2 && !isOverheadView) {
                     //HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
@@ -624,7 +627,7 @@ public:
                 }
             }
 			else {
-				bulletStartPos = curCamCenter;
+				bulletStartPos = possessedActor->position;
 			}
 
         }
@@ -709,7 +712,7 @@ public:
 				//Generate bunny bullet
 				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, false, 0, false);
 				renderBulletObj = tempBullet;
-				renderBulletObj->objVelocity = 15.0f;
+				renderBulletObj->objVelocity = 10.0f;
 
 
                 for(int i = 0; i < AllGameObjects.size(); i++){
@@ -739,7 +742,9 @@ public:
 
             if(HitObjects.size() != 0) {
 				//Set Object Bullet hit for rendering collision
-				hitBulletObj = HitObjects[minDistanceIndex];
+				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
+				bulletStartPos = possessedActor->position;
+				didHitObject = true;
 
                 if (HitObjects[minDistanceIndex]->team == 1 && !isOverheadView) {
                     HitObjects[minDistanceIndex]->health -= 1.0f;
@@ -750,7 +755,7 @@ public:
                 }
             }
 			else {
-				bulletStartPos = curCamCenter;
+				bulletStartPos = possessedActor->position;
 			}
 
         }
@@ -1671,11 +1676,12 @@ public:
 
 
 			// -- Hit detection
-			if (hitBulletObj != NULL) {
+			if (didHitObject) {
 
-				if (checkCollisions(renderBulletObj, hitBulletObj)) {
+
+				if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
 					renderBulletObj = NULL;
-					hitBulletObj = NULL;
+					didHitObject = false;
 
 					// Go to the overhead view
 					isOverheadView = true;
