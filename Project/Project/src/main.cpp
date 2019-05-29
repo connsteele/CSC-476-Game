@@ -78,6 +78,12 @@ vector<shared_ptr<GameObject> > alienUnits;
 
 vector<vec3> coverCubesLocs;
 
+//--- Variables that control hierarchical animation
+float headRot = 0.0f;
+bool headBob = false; // controls what way to bob
+
+
+
 //Camera Timing
 float deltaTime = 0.0f, lastTime = glfwGetTime();
 float lastFrame = 0.0f;
@@ -167,7 +173,7 @@ public:
 	std::shared_ptr<Program> texProg;
 
 	// Access OBJ files
-	shared_ptr<Shape> bunnyShape, maRobotShape;
+	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
 	shared_ptr<Shape> cube;
 	shared_ptr<Shape> sphere;
 	shared_ptr<Shape> gun, shotgun;
@@ -575,11 +581,11 @@ public:
 				bullets.push_back(tempBullet5);
 
 				renderBulletObj = tempBullet1;
-				tempBullet1->objVelocity = 10.0f;
-				tempBullet2->objVelocity = 10.0f;
-				tempBullet3->objVelocity = 10.0f;
-				tempBullet4->objVelocity = 10.0f;
-				tempBullet5->objVelocity = 10.0f;
+				tempBullet1->objVelocity = 17.0f; // Shotgun bullet speed
+				tempBullet2->objVelocity = 17.0f;
+				tempBullet3->objVelocity = 17.0f;
+				tempBullet4->objVelocity = 17.0f;
+				tempBullet5->objVelocity = 17.0f;
 
 
 				//Check ray collisions with all game objects
@@ -597,15 +603,15 @@ public:
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
-				float posX = width / 2.0f; //Magic Number
-				float posY = height / 2.0f; //Magic Number
+				float posX = width / 2.0f;
+				float posY = height / 2.0f;
 
 				vec3 ray_center = GenerateRay(posX, posY);
 
 				//Generate bunny bullet
 				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, true, 0, false);
 				renderBulletObj = tempBullet;
-				renderBulletObj->objVelocity = 10.0f;
+				renderBulletObj->objVelocity = 17.0f; // Pistol Bullet Speed
 				bullets.push_back(tempBullet);
 				isBulletShot = true;
 
@@ -1010,11 +1016,35 @@ public:
 		bunnyShape->init();
 		// bman works but throws hella verteTex things
 
-		// Initialize the bunny obj mesh VBOs etc
+		// Load the pieces of the robot mesh
 		maRobotShape = make_shared<Shape>();
-		maRobotShape->loadMesh(resourceDirectory + "/robot0.obj"); // has vertTexure issues
+		maRobotShape->loadMesh(resourceDirectory + "/robot0.obj");
 		maRobotShape->resize();
 		maRobotShape->init();
+
+		roboBody = make_shared<Shape>();
+		roboBody->loadMesh(resourceDirectory + "/robo_body.obj");
+		roboBody->init();
+
+		roboRarm = make_shared<Shape>();
+		roboRarm->loadMesh(resourceDirectory + "/robo_rarm.obj");
+		roboRarm->init();
+
+		roboLarm = make_shared<Shape>();
+		roboLarm->loadMesh(resourceDirectory + "/robo_larm.obj");
+		roboLarm->init();
+
+		roboRleg = make_shared<Shape>();
+		roboRleg->loadMesh(resourceDirectory + "/robo_rleg.obj");
+		roboRleg->init();
+
+		roboLleg = make_shared<Shape>();
+		roboLleg->loadMesh(resourceDirectory + "/robo_lleg.obj");
+		roboLleg->init();
+
+		roboHead = make_shared<Shape>();
+		roboHead->loadMesh(resourceDirectory + "/robo_head.obj");
+		roboHead->init();
 
 		// Initialize the cube OBJ model
 		cube = make_shared<Shape>();
@@ -1634,6 +1664,7 @@ public:
 				// bunBun->DoCollisions()
 
 
+
 				//add uniforms to shader
 				// Set the materials of the bunny depending on if the player has hit it or not
 				//if (sceneActorGameObjs[i]->beenShot)
@@ -1661,12 +1692,36 @@ public:
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
 					glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+
+
+					// Draw the hiearchical Model
+
+					// Body
+					//M->pushMatrix();
+					//glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					//roboBody->draw(shader);
+
+					//// Head
+					//M->pushMatrix();
+					//M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
+					//glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					//roboHead->draw(shader);
+					//M->popMatrix();
+					//
+					////M->pushMatrix();
+					////glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					//roboLarm->draw(shader);
+					////M->popMatrix();
+					//roboRarm->draw(shader);
+					//roboRleg->draw(shader);
+					//roboLleg->draw(shader);
+
+					//M->popMatrix();
 				}
 				
 
@@ -1674,6 +1729,22 @@ public:
 			}
 			
 		}
+
+
+		// ----  Update Animations
+		if (headRot > 0.12 || headRot < -0.12) // toggle the bob direction
+		{
+			headBob = !headBob;
+		}
+		if (headBob)
+		{
+			headRot += 0.0015; // use with delta time
+		}
+		else
+		{
+			headRot -= 0.0015;
+		}
+		
 
 		//shader bind by caller
 		//shader->unbind(); // Unbind the passed in Shader
