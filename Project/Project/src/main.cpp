@@ -187,7 +187,7 @@ public:
 
 	//shadow stuff
 	GLuint depthMapFBO;
-	const GLuint S_WIDTH = 1024, S_HEIGHT = 1024;
+	const GLuint S_WIDTH = 4096, S_HEIGHT = 4096;
 	GLuint depthMap;
 
 	//shadow debug stuff
@@ -1552,7 +1552,8 @@ public:
 
 	//shadow stuff
 	mat4 SetOrthoMatrix(shared_ptr<Program> curShade) {
-		mat4 ortho = glm::ortho(-10.0f, 40.0f, -20.0f, 40.0f, 0.5f, 50.0f);
+		mat4 ortho = glm::ortho(-70.0f, 70.0f, -60.0f, 60.0f, -30.0f, 50.0f);
+		//mat4 ortho = glm::ortho(20.0f, 40.0f, 15.0f, 40.0f, 1.0f, 40.0f);
 		//fill in the glUniform call to send to the right shader!
 		glUniformMatrix4fv(curShade->getUniform("LP"), 1, GL_FALSE, value_ptr(ortho));
 		return ortho;
@@ -1589,7 +1590,7 @@ public:
 		glViewport(0, 0, S_WIDTH, S_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glCullFace(GL_FRONT);
+		//glCullFace(GL_FRONT);
 		
 		//set up shadow shader
 		//render scene
@@ -1605,9 +1606,7 @@ public:
 		renderSceneActors(M, P, DepthProg, false);
 		renderTerrain(M, P, DepthProg, false);
 		renderWeapons(M, P, DepthProg, false);
-		 
-
-
+		
 
 		DepthProg->unbind();
 		glCullFace(GL_BACK);

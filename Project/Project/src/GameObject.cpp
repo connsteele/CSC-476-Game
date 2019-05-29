@@ -42,7 +42,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 void GameObject::DrawGameObj(std::shared_ptr<Program> shader)
 {
 	objModel->draw(shader);
-	renderBbox();
+	renderBbox(shader);
 }
 
 void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up)
@@ -83,11 +83,11 @@ void GameObject::DoCollisions(std::shared_ptr<MatrixStack> &M) //std::shared_ptr
 }
 
 // Update the center of the bounding box for the model
-void GameObject::renderBbox()
+void GameObject::renderBbox(std::shared_ptr<Program> shader)
 {
 	if (visibleBbox)
 	{ 
-		glUniformMatrix4fv(curShaderProg->getUniform("M"), 1, GL_FALSE, value_ptr(bboxTransform));
+		glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(bboxTransform));
 		glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(
