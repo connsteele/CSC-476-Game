@@ -1482,7 +1482,6 @@ public:
 		M->popMatrix();
 
 		prog->unbind();
-		std::cout << "Ground plane unbind" << std::endl;
 
 		return;
 	}
@@ -1506,7 +1505,7 @@ public:
 
 	//shadow stuff
 	mat4 SetOrthoMatrix(shared_ptr<Program> curShade) {
-		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 30.0f);
+		mat4 ortho = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 50.0f);
 		//fill in the glUniform call to send to the right shader!
 		glUniformMatrix4fv(curShade->getUniform("LP"), 1, GL_FALSE, value_ptr(ortho));
 		return ortho;
@@ -1521,18 +1520,19 @@ public:
 	}
 
 	//shadow stuff
-	void SetProjectionMatrix(shared_ptr<Program> curShade) {
+	mat4 SetProjectionMatrix(shared_ptr<Program> curShade) {
 		int width, height;
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 		float aspect = width / (float)height;
 		mat4 Projection = perspective(radians(50.0f), aspect, 0.1f, 100.0f);
 		glUniformMatrix4fv(curShade->getUniform("P"), 1, GL_FALSE, value_ptr(Projection));
+		return Projection;
 	}
 
 	//shadow stuff
 	void renderShadows(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P) {
 		mat4 LS;
-		vec3 g_light = vec3(0, 10, 0);
+		vec3 g_light = vec3(5, 10, 5);
 
 		// Get current frame buffer size.
 		int width, height;
@@ -1563,7 +1563,6 @@ public:
 
 
 		DepthProg->unbind();
-		std::cout << "Depth unbind" << std::endl;
 		glCullFace(GL_BACK);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1598,7 +1597,6 @@ public:
 		
 
 		ShadowProg->unbind();
-		std::cout << "Shadow unbind" << std::endl;
 		
 	}
 
@@ -2184,7 +2182,6 @@ public:
 			M->popMatrix();
 
 			prog->unbind();
-			std::cout << "crosshair unbind" << std::endl;
 			
 		}
 
