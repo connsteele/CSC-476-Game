@@ -99,7 +99,7 @@ vec3 up = vec3(0, 1, 0);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
-vec3 oCamEye = vec3(-7.0f, 15.0f, -40.00);
+vec3 oCamEye = vec3(-25.0f, 60.0f, 0.00);
 
 // Current Camera
 vec3 curCamEye = oCamEye;
@@ -2127,19 +2127,27 @@ public:
 		{
 			if (possessedBullet)
 			{
-				curCamEye = possessedBullet->position + vec3(0.0f, 2.0f, 0.0f);
+				curCamEye = possessedBullet->position + vec3(0.0f, 6.0f, 0.0f);
 				// possessedActor = NULL;
+				ox = 0.1f;
+				oy = -1.0f;
+				oz = 0.0f;
+				vec3 lookDir = vec3(ox, oy, oz);
+
+				curCamCenter = curCamEye + lookDir;
+				camMove = vec3(ox, oy, oz);
 			}
 			else if (possessedActor)
 			{
 				curCamEye = possessedActor->position;
+				x = radius * cos(phi)*cos(theta);
+				y = radius * sin(phi);
+				z = radius * cos(phi)*sin(theta);
+				//printf("rots phi: %d, theta: %d \n", phi, theta);
+				curCamCenter = curCamEye + vec3(x, y, z);
+				camMove = vec3(x, y, z);
 			}
-			x = radius * cos(phi)*cos(theta);
-			y = radius * sin(phi);
-			z =  radius * cos(phi)*sin(theta);
-			//printf("rots phi: %d, theta: %d \n", phi, theta);
-			curCamCenter = curCamEye + vec3(x, y, z);
-			camMove = vec3(x, y, z);
+			
 		}
 		else // Overhead
 		{
