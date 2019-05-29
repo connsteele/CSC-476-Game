@@ -77,7 +77,7 @@ float elapsedTime = 0.0f;
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 11; // use 11
+int turnLength = 1100; // use 11
 
 bool isCaptureCursor = false;
 
@@ -187,7 +187,7 @@ public:
 
 	//shadow stuff
 	GLuint depthMapFBO;
-	const GLuint S_WIDTH = 16384, S_HEIGHT = 16384;
+	const GLuint S_WIDTH = 16384 / 4, S_HEIGHT = 16384 / 4;
 	GLuint depthMap;
 
 	//shadow debug stuff
@@ -808,25 +808,25 @@ public:
 			glUniform1f(shader->getUniform("shine"), 120.0);
 			break;
 		case 1: // flat grey
-			glUniform3f(shader->getUniform("MatAmb"), 0.13, 0.13, 0.14);
+			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.4, 0.4);
 			glUniform3f(shader->getUniform("MatDif"), 0.3, 0.3, 0.4);
-			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.3, 0.4);
-			glUniform1f(shader->getUniform("shine"), 4.0);
+			glUniform3f(shader->getUniform("MatSpec"), 0.6, 0.6, 0.6);
+			glUniform1f(shader->getUniform("shine"), 70.0);
 			break;
 		case 2: // brass
-			glUniform3f(shader->getUniform("MatAmb"), 0.3294, 0.2235, 0.02745);
+			glUniform3f(shader->getUniform("MatAmb"), 0.6, 0.4, 0.1);
 			glUniform3f(shader->getUniform("MatDif"), 0.7804, 0.5686, 0.11373);
 			glUniform3f(shader->getUniform("MatSpec"), 0.9922, 0.941176, 0.80784);
 			glUniform1f(shader->getUniform("shine"), 27.9);
 			break;
 		case 3: //Mine: red
-			glUniform3f(shader->getUniform("MatAmb"), 0.15, 0.17, 0.12);
+			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.83, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
 			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		case 4: //Mine: green
-			glUniform3f(shader->getUniform("MatAmb"), 0.15, 0.17, 0.12);
+			glUniform3f(shader->getUniform("MatAmb"), 0.2, 0.4, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.13, 0.8, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
 			glUniform1f(shader->getUniform("shine"), 20.0);
@@ -1601,8 +1601,7 @@ public:
 
 		LS = LP * LV;
 
-		//ToDo shadow : find way to replace
-		//drawScene(DepthProg, 0, 0);
+		// Renders for depth test
 		renderSceneActors(M, P, DepthProg, false);
 		renderTerrain(M, P, DepthProg, false);
 		renderWeapons(M, P, DepthProg, false);
@@ -1668,10 +1667,10 @@ public:
 			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
 
-			//ToDo shadow : find way to replace
-			//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+			// Actually render the models with shadows cast on them
 			renderSceneActors(M, P, ShadowProg, true);
 			renderWeapons(M, P, ShadowProg, true);
+			SetMaterial(1, ShadowProg);
 			renderTerrain(M, P, ShadowProg, true);
 			// render all the actors in the scene
 			// Render all objs in the terrain
@@ -1680,6 +1679,11 @@ public:
 			ShadowProg->unbind();
 		}
 		
+	}
+
+	void renderFPSweapon(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader)
+	{
+
 	}
 
 	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)

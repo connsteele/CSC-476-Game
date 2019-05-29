@@ -31,6 +31,9 @@ in OUT_struct {
 float TestShadow(vec4 LSfPos) {
 
     float bias = 0.001;
+	int plusmin = 1;
+	float divisor = ((plusmin* 2)+1) * ((plusmin* 2)+1);
+	float scaleIndex =  16384.f / 2.0f; //65536.0f / 4.0f;
 	float sum = 0;
 	float xComp;
 	float yComp;
@@ -38,10 +41,10 @@ float TestShadow(vec4 LSfPos) {
 	//1: shift the coordinates from -1, 1 to 0 ,1
     vec3 shifted = (LSfPos.xyz + vec3(1)) * 0.5;
 
-	for(int i = -3; i <= 3; i++) {
-		for(int j = -3; j <= 3; j++) {
-			xComp = i/65536.0;
-			yComp = j/65536.0;
+	for(int i = -plusmin; i <= plusmin; i++) {
+		for(int j = -plusmin; j <= plusmin; j++) {
+			xComp = i/scaleIndex;
+			yComp = j/scaleIndex;
 			//2: read off the stored depth (.) from the ShadowDepth, using the shifted.xy
 			float Ldepth = texture(shadowDepth, shifted.xy + vec2(xComp, yComp)).r;
 			//3: compare to the current depth (.z) of the projected depth
@@ -51,7 +54,7 @@ float TestShadow(vec4 LSfPos) {
 		}
 	}
 
-	return sum / 49;
+	return sum / divisor;
 }
 
 void main() {
