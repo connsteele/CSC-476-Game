@@ -90,7 +90,7 @@ void main() {
 	*/
 
 	//from "simple_frag"
-	vec3 lightvec = lightSource - in_struct.fPos;
+	vec3 lightvec = lightSource;
 	lightvec = normalize(lightvec);
 
 	//calc h

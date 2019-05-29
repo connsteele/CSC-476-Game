@@ -202,6 +202,7 @@ public:
 	GLuint CylVertexBufferID;
 
 	//shadow stuff
+	vec3 g_light = vec3(5, 10, 5);
 	GLuint depthMapFBO;
 	const GLuint S_WIDTH = 16384 / 4, S_HEIGHT = 16384 / 4;
 	GLuint depthMap;
@@ -1486,7 +1487,7 @@ public:
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 		glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-		glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+		glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
 		SetMaterial(3, prog);
@@ -1547,7 +1548,6 @@ public:
 	//shadow stuff
 	void renderShadows(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P) {
 		mat4 LS;
-		vec3 g_light = vec3(5, 10, 5);
 
 		// Get current frame buffer size.
 		int width, height;
@@ -1672,7 +1672,7 @@ public:
 				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-				glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 
 				bullets[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 
@@ -1774,7 +1774,7 @@ public:
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-					glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 
@@ -1855,7 +1855,7 @@ public:
 			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+			glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 			weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 
 			M->popMatrix();
@@ -1930,7 +1930,7 @@ public:
 			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+			glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 			sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 			M->popMatrix();
 		}
@@ -2327,7 +2327,7 @@ public:
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+				glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 				SetMaterial(1, prog); // Flat Grey
 				gun->draw(prog);
 				M->popMatrix();
@@ -2340,7 +2340,7 @@ public:
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+				glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 				SetMaterial(1, prog); // Flat Grey
 				shotgun->draw(prog);
 				M->popMatrix();
