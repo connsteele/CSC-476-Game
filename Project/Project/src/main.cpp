@@ -139,6 +139,9 @@ public:
 	float x, y, z, ox, oy, oz;
 	const float to_radians = M_PI / 180;
 
+	//ensure FBO only draw to once
+	int FirstTime = 1;
+
 	//Time variable which determines how often bunnies spawn;
 	float bunSpawn = 4.0f; // float P;
 	float bunSpawnReset = bunSpawn; //So we dont need magic number when resetting bunSpawn
@@ -170,7 +173,7 @@ public:
 
 	// Our shader program
 	std::shared_ptr<Program> prog;
-	std::shared_ptr<Program> texProg;
+	std::shared_ptr<Program> tex_prog;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -882,6 +885,34 @@ public:
 		ShadowProg->addUniform("shine");
 
 		initShadow();
+
+		//set up the shaders to blur the FBO decomposed just a placeholder pass thru now
+		tex_prog = make_shared<Program>();
+		tex_prog->setVerbose(true);
+		tex_prog->setShaderNames(resourceDirectory + "/pass_vert.glsl", resourceDirectory + "/tex_frag.glsl");
+		tex_prog->init();
+		tex_prog->addUniform("texBuf");
+		tex_prog->addAttribute("vertPos");
+		tex_prog->addUniform("t");
+
+		//create two frame buffer objects to toggle between
+		glGenFramebuffers(2, frameBuf);
+		glGenTextures(2, texBuf);
+		glGenRenderbuffers(1, &depthBuf);
+		createFBO(frameBuf[0], texBuf[0]);
+
+		//set up depth necessary since we are rendering a mesh that needs depth test
+		glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
+
+		//more FBO set up
+		GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers);
+
+		//create another FBO so we can swap back and forth
+		createFBO(frameBuf[1], texBuf[1]);
+		//this one doesn't need depth
 	}
 	
 	void initPlayerBbox()
@@ -1366,8 +1397,6 @@ public:
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
 		AllGameObjects.push_back(alien3);
-
-
 		
 	}
 
@@ -1409,8 +1438,8 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
 
@@ -2077,6 +2106,25 @@ public:
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 
+	/* To call the blur on the specificed texture */
+/* TODO: fill in with call to appropriate shader(s) to complete the blur  */
+	void Blur(GLuint inTex) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, inTex);
+
+		// example applying of 'drawing' the FBO texture
+		tex_prog->bind();
+		glUniform1f(tex_prog->getUniform("t"), glfwGetTime());
+		glUniform1i(tex_prog->getUniform("texBuf"), 0);
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+		tex_prog->unbind();
+
+	}
+
 	void render()
 	{
 		// Get current frame buffer size.
@@ -2101,9 +2149,10 @@ public:
 		lastFrame = currentFrame;
 		elapsedTime += deltaTime;		
 
-
+		//set up to render to buffer
+		//glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
 		// Clear framebuffer.
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		/* Leave this code to just draw the meshes alone */
 		float aspect = width / (float)height;
@@ -2302,6 +2351,31 @@ public:
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
+
+		//regardless unbind the FBO 
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		/* code to write out the FBO (texture) just once */
+		//if (FirstTime) {
+			//assert(GLTextureWriter::WriteImage(texBuf[0], "Texture_output.png"));
+			//FirstTime = 0;
+		//}
+
+		/* TODO - add code so that you can call the blur as much as needed */
+		//glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//Blur(texBuf[0]);
+		/*for (int i = 0; i < 17; i++) {
+			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[(i + 1) % 2]);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			Blur(texBuf[i % 2]);
+		}*/
+
+		/* now draw the actual output  to the default framebuffer - ie display */
+		/* note the current base code is just using one FBO and texture */
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//Blur(texBuf[0]);
 	}
 
 };
