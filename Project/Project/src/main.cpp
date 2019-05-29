@@ -187,7 +187,7 @@ public:
 
 	//shadow stuff
 	GLuint depthMapFBO;
-	const GLuint S_WIDTH = 4096, S_HEIGHT = 4096;
+	const GLuint S_WIDTH = 16384, S_HEIGHT = 16384;
 	GLuint depthMap;
 
 	//shadow debug stuff
