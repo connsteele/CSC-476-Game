@@ -65,7 +65,9 @@ GLuint bufCubeNormal, bufCubeTexture, bufCubeIndex;
 shared_ptr<GameObject> renderBulletObj = NULL;
 float hitObjectDistance;
 bool didHitObject = false;
+bool isBulletShot = false; // -- If bullet is not shot, go straight back to overhead view
 vec3 bulletStartPos;
+vector<shared_ptr<GameObject> > bullets;
 
 
 //--- Vector of all actor game objects plus arrays of player units and enemy units
@@ -85,7 +87,7 @@ float elapsedTime = 0.0f;
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 11; // use 11
+int turnLength = 20; // use 11
 
 bool isCaptureCursor = false;
 
@@ -439,19 +441,16 @@ public:
 
 			if(whoseTurn == 1) {
                 //Perform team 1 ray trace operations
-                TeamOneRayTrace(ray_wor);
+                //TeamOneRayTrace(ray_wor);
+				rayTraceOperations(ray_wor, robotUnits, usedRobotUnits, 1);
             }
 			else{
 				//Perform team 2 ray trace operations
-			    TeamTwoRayTrace(ray_wor);
+			    //TeamTwoRayTrace(ray_wor);
+				rayTraceOperations(ray_wor, alienUnits, usedAlienUnits, 2);
 			}
 
-			// Go back to the overhead view after shooting
-			if (!isOverheadView)
-			{
-				//switchTurn();
-				readyToSwitch = true;
-			}
+			
 		}
 
 		if (action == GLFW_RELEASE)
@@ -509,32 +508,32 @@ public:
 	}
 
 
-	void TeamOneRayTrace(vec3 ray_wor){
+	void rayTraceOperations(vec3 ray_wor, vector<shared_ptr<GameObject> > &TeamArray, vector<shared_ptr<GameObject> > &UsedArray, int teamNum) {
 		if (possessedActor == NULL) {
-			for (int i = 0; i < robotUnits.size(); i++) {
+			for (int i = 0; i < TeamArray.size(); i++) {
 
 
-				GameObject currObject = *robotUnits[i];
+				GameObject currObject = *TeamArray[i];
 
-				bool isClicked = RayTraceCamera(ray_wor, robotUnits[i]);
+				bool isClicked = RayTraceCamera(ray_wor, TeamArray[i]);
 
 				if (isClicked && possessedActor == NULL && isOverheadView) {
 
 					// Check if unit has been used (check if not empty first)
-					if (!usedRobotUnits.empty()) {
-						if (find(usedRobotUnits.begin(), usedRobotUnits.end(), robotUnits[i]) == usedRobotUnits.end()) {
-							robotUnits[i]->isPosessed = true;
-							possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
-							usedRobotUnits.push_back(robotUnits[i]);
-							robotUnits[i]->isUsed = true;
+					if (!UsedArray.empty()) {
+						if (find(UsedArray.begin(), UsedArray.end(), TeamArray[i]) == UsedArray.end()) {
+							TeamArray[i]->isPosessed = true;
+							possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
+							UsedArray.push_back(TeamArray[i]);
+							TeamArray[i]->isUsed = true;
 						}
 					}
 					// Add first unit to array
 					else {
-						robotUnits[i]->isPosessed = true;
-						possessedActor = robotUnits[i]; // tell the interpolate function that it should possess the clicked object
-						usedRobotUnits.push_back(robotUnits[i]);
-						robotUnits[i]->isUsed = true;
+						TeamArray[i]->isPosessed = true;
+						possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
+						UsedArray.push_back(TeamArray[i]);
+						TeamArray[i]->isUsed = true;
 					}
 
 				}
@@ -542,38 +541,59 @@ public:
 			}
 		}
 
-        //Only run weapon loop if possessed actor exists
-        else if(possessedActor != NULL){
+		//Only run weapon loop if possessed actor exists
+		else if (possessedActor != NULL) {
 
-            vector<shared_ptr<GameObject> > HitObjects;
+			vector<shared_ptr<GameObject> > HitObjects;
 
-            //if weapon is shotgun
-            if(possessedActor->currWeapon == 1){
+			//if weapon is shotgun
+			if (possessedActor->currWeapon == 1) {
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 				float posX = width / 2.0f; //Magic Number
 				float posY = height / 2.0f; //Magic Number
 
-                //Generate rays one time, not once for each actor
+				//Generate rays one time, not once for each actor
 				vec3 ray_center = GenerateRay(posX, posY);
-                vec3 ray_left = GenerateRay(posX - 50.0, posY);
-                vec3 ray_right = GenerateRay(posX + 50.0, posY);
-                vec3 ray_down = GenerateRay(posX, posY + 50.0);
-                vec3 ray_up = GenerateRay(posX, posY - 50.0);
+				vec3 ray_left = GenerateRay(posX - 50.0, posY);
+				vec3 ray_right = GenerateRay(posX + 50.0, posY);
+				vec3 ray_down = GenerateRay(posX, posY + 50.0);
+				vec3 ray_up = GenerateRay(posX, posY - 50.0);
 
-                //Check ray collisions with all game objects
-                for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+				// --- Generate shotgun bullets
 
-                    if(isClicked){
-                        //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(AllGameObjects[i]);
-                    }
-                }
+				shared_ptr<GameObject> tempBullet1 = make_shared<GameObject>("bullet1", sphere, "../resources/", prog, curCamCenter, ray_center, true, 0, false);
+				shared_ptr<GameObject> tempBullet2 = make_shared<GameObject>("bullet2", sphere, "../resources/", prog, curCamCenter, ray_left, true, 0, false);
+				shared_ptr<GameObject> tempBullet3 = make_shared<GameObject>("bullet3", sphere, "../resources/", prog, curCamCenter, ray_right, true, 0, false);
+				shared_ptr<GameObject> tempBullet4 = make_shared<GameObject>("bullet4", sphere, "../resources/", prog, curCamCenter, ray_down, true, 0, false);
+				shared_ptr<GameObject> tempBullet5 = make_shared<GameObject>("bullet5", sphere, "../resources/", prog, curCamCenter, ray_up, true, 0, false);
+				bullets.push_back(tempBullet1);
+				bullets.push_back(tempBullet2);
+				bullets.push_back(tempBullet3);
+				bullets.push_back(tempBullet4);
+				bullets.push_back(tempBullet5);
 
-            }
-            else if(possessedActor->currWeapon == 0){
+				renderBulletObj = tempBullet1;
+				tempBullet1->objVelocity = 10.0f;
+				tempBullet2->objVelocity = 10.0f;
+				tempBullet3->objVelocity = 10.0f;
+				tempBullet4->objVelocity = 10.0f;
+				tempBullet5->objVelocity = 10.0f;
+
+
+				//Check ray collisions with all game objects
+				for (int i = 0; i < AllGameObjects.size(); i++) {
+					bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+
+					if (isClicked) {
+						//If ray hit object add to vector of hit objects
+						HitObjects.push_back(AllGameObjects[i]);
+					}
+				}
+
+			}
+			else if (possessedActor->currWeapon == 0) {
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -586,179 +606,52 @@ public:
 				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, true, 0, false);
 				renderBulletObj = tempBullet;
 				renderBulletObj->objVelocity = 10.0f;
+				bullets.push_back(tempBullet);
+				isBulletShot = true;
 
-                for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
+				for (int i = 0; i < AllGameObjects.size(); i++) {
+					bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
-                    if(isClicked){
-                        //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(AllGameObjects[i]);
-                    }
-                }
-
-            }
-
-            //Loop to see what the closest object hit was
-            float minDistance = 1000000.0f;
-            float minDistanceIndex = -1;
-
-            for(int i = 0; i < HitObjects.size(); i++){
-                float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
-                if(currDistance < minDistance){
-                    minDistance = currDistance;
-                    minDistanceIndex = i;
-                }
-            }
-
-            if(HitObjects.size() != 0) {
-
-				//Set Object Bullet hit for rendering collision
-				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
-				bulletStartPos = possessedActor->position;
-				didHitObject = true;
-
-                if (HitObjects[minDistanceIndex]->team == 2 && !isOverheadView) {
-                    //HitObjects[minDistanceIndex]->beenShot = true; // Indicate the actor has been 'shot' TEMP SOLUTION
-					HitObjects[minDistanceIndex]->health -= 1.0f;
-					if(HitObjects[minDistanceIndex]->health <= 0.0f){
-						HitObjects[minDistanceIndex]->beenShot = true;
-						numAlienUnits--;
+					if (isClicked) {
+						//If ray hit object add to vector of hit objects
+						HitObjects.push_back(AllGameObjects[i]);
 					}
-                }
-            }
-			else {
-				bulletStartPos = possessedActor->position;
-			}
-
-        }
-	}
-
-	void TeamTwoRayTrace(vec3 ray_wor){
-		if (possessedActor == NULL) {
-			for (int i = 0; i < alienUnits.size(); i++) {
-
-
-				GameObject currObject = *alienUnits[i];
-
-				bool isClicked = RayTraceCamera(ray_wor, alienUnits[i]);
-
-				if (isClicked && possessedActor == NULL && isOverheadView) {
-
-					// check if clicked object is already in array (check if empty first)
-					if (!usedAlienUnits.empty()) {
-						if (find(usedAlienUnits.begin(), usedAlienUnits.end(), alienUnits[i]) == usedAlienUnits.end()) {
-							alienUnits[i]->isPosessed = true;
-							possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
-							usedAlienUnits.push_back(alienUnits[i]);
-							alienUnits[i]->isUsed = true;
-						}
-						else
-						{
-							printf("Actor was already used, pick a different teammate");
-						}
-					}
-					// Add first unit to array
-					else {
-						alienUnits[i]->isPosessed = true;
-						possessedActor = alienUnits[i]; // tell the interpolate function that it should possess the clicked object
-						usedAlienUnits.push_back(alienUnits[i]);
-						alienUnits[i]->isUsed = true;
-					}
-
 				}
 
 			}
-		}
 
-        //Only run weapon loop of possessed actor exists
-        else if(possessedActor != NULL){
+			//Loop to see what the closest object hit was
+			float minDistance = 1000000.0f;
+			float minDistanceIndex = -1;
 
-            vector<shared_ptr<GameObject> > HitObjects;
+			for (int i = 0; i < HitObjects.size(); i++) {
+				float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
+				if (currDistance < minDistance) {
+					minDistance = currDistance;
+					minDistanceIndex = i;
+				}
+			}
 
-            //if weapon is shotgun
-            if(possessedActor->currWeapon == 1){
-				int width, height;
-				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
-				float posX = width / 2.0f; //Magic Number
-				float posY = height / 2.0f; //Magic Number
+			if (HitObjects.size() != 0) {
 
-                //Generate rays one time, not once for each actor
-				vec3 ray_center = GenerateRay(posX, posY);
-                vec3 ray_left = GenerateRay(posX - 50.0, posY);
-                vec3 ray_right = GenerateRay(posX + 50.0, posY);
-                vec3 ray_down = GenerateRay(posX, posY + 50.0);
-                vec3 ray_up = GenerateRay(posX, posY - 50.0);
-
-                //Check ray collisions with all game objects
-                for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
-
-                    if(isClicked){
-                        //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(AllGameObjects[i]);
-                    }
-                }
-
-            }
-            else if(possessedActor->currWeapon == 0){
-				int width, height;
-				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
-				float posX = width / 2.0f; //Magic Number
-				float posY = height / 2.0f; //Magic Number
-
-				vec3 ray_center = GenerateRay(posX, posY);
-
-
-				//Generate bunny bullet
-				shared_ptr<GameObject> tempBullet = make_shared<GameObject>("bullet", sphere, "../resources/", prog, curCamCenter, ray_center, false, 0, false);
-				renderBulletObj = tempBullet;
-				renderBulletObj->objVelocity = 10.0f;
-
-
-                for(int i = 0; i < AllGameObjects.size(); i++){
-                    bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
-
-                    if(isClicked){
-                        //If ray hit object add to vector of hit objects
-                        HitObjects.push_back(AllGameObjects[i]);
-                    }
-                }
-
-            }
-
-            //Loop to see what the closest object hit was
-            float minDistance = 1000000.0f;
-            float minDistanceIndex = -1;
-
-            for(int i = 0; i < HitObjects.size(); i++){
-                float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
-                if(currDistance < minDistance){
-                    minDistance = currDistance;
-                    minDistanceIndex = i;
-                }
-            }
-
-			
-
-            if(HitObjects.size() != 0) {
 				//Set Object Bullet hit for rendering collision
 				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
 				bulletStartPos = possessedActor->position;
 				didHitObject = true;
 
-                if (HitObjects[minDistanceIndex]->team == 1 && !isOverheadView) {
-                    HitObjects[minDistanceIndex]->health -= 1.0f;
-					if(HitObjects[minDistanceIndex]->health <= 0.0f){
+				if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
+					HitObjects[minDistanceIndex]->health -= 1.0f;
+					if (HitObjects[minDistanceIndex]->health <= 0.0f) {
 						HitObjects[minDistanceIndex]->beenShot = true;
-						numRobotUnits--;
+						numAlienUnits--;
 					}
-                }
-            }
+				}
+			}
 			else {
 				bulletStartPos = possessedActor->position;
 			}
 
-        }
+		}
 	}
 
 	vec3 GenerateRay(double posX, double posY){
@@ -1650,53 +1543,72 @@ public:
 	{
 
 		if (renderBulletObj != NULL) {
-			// Set the possesed actor so the camera follows the bullet
-			if (possessedBullet != renderBulletObj)
-			{
-				possessedBullet = renderBulletObj;
-			}
-
-			M->pushMatrix();
-			M->loadIdentity();
-
-			SetMaterial(1, shader);
-
-			renderBulletObj->step(deltaTime, M, P, curCamEye, curCamCenter, up);
-
-			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
-			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
-
-			renderBulletObj->DrawGameObj(shader); // Draw the bunny model and render bbox
-
-			M->popMatrix();
-
-
-			// -- Hit detection
-			if (didHitObject) {
-
-
-				if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
-					renderBulletObj = NULL;
-					didHitObject = false;
-
-					// Go to the overhead view
-					isOverheadView = true;
-					isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-					possessedBullet = NULL;
+			for (int i = 0; i < bullets.size(); i++) {
+				// Set the possesed actor so the camera follows the bullet
+				if (possessedBullet != renderBulletObj)
+				{
+					possessedBullet = renderBulletObj;
 				}
-			}
-			else {
-				if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
-					renderBulletObj = NULL;
 
-					// Go to the overhead view
-					isOverheadView = true;
-					isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-					possessedBullet = NULL;
+				M->pushMatrix();
+				M->loadIdentity();
+
+				SetMaterial(1, shader);
+
+				bullets[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+
+				glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+
+				bullets[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+
+				M->popMatrix();
+
+
+				// -- Hit detection
+				if (didHitObject) {
+
+
+					if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
+						renderBulletObj = NULL;
+						didHitObject = false;
+
+						if (!isOverheadView)
+						{
+							switchTurn();
+						}
+
+						// Go to the overhead view
+						isOverheadView = true;
+						isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+						possessedBullet = NULL;
+						bullets.clear();
+						isBulletShot = false;
+					}
+				}
+				else {
+					if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
+						renderBulletObj = NULL;
+
+						// Go back to the overhead view after shooting
+						if (!isOverheadView)
+						{
+							switchTurn();
+						}
+
+						// Go to the overhead view
+						isOverheadView = true;
+						isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+						possessedBullet = NULL;
+						bullets.clear();
+						isBulletShot = false;
+
+						
+					}
 				}
 			}
 
@@ -1942,7 +1854,9 @@ public:
 			else if (glfwGetTime() - turnStartTime > turnLength)
 			{
 				//switchTurn();
-				readyToSwitch = true;
+				if (!possessedBullet) {
+					readyToSwitch = true;
+				}
 			}
 		}
 	}
@@ -1975,8 +1889,11 @@ public:
 		}
 
 		//Snap user back to overhead view
-		// isOverheadView = true; // This gets set in bullet shit now
-		// isCaptureCursor = !isCaptureCursor; // turn the cursor back on // This gets set in bullet shit now
+		if (!isBulletShot) {
+			isOverheadView = true; // This gets set in bullet shit now
+			isCaptureCursor = !isCaptureCursor; // turn the cursor back on // This gets set in bullet shit now
+			possessedBullet = NULL;
+		}
 		firstPersonUI.setRender(false);
 		overViewUI.setRender(true);
 		//reset turn timer
