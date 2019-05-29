@@ -103,7 +103,6 @@ void Program::bind()
 void Program::unbind()
 {
 	CHECKED_GL_CALL(glUseProgram(0));
-	std::cout << "Attempt to unbind " << vShaderName << std::endl;
 }
 
 void Program::addAttribute(const std::string &name)
