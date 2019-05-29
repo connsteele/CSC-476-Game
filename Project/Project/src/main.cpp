@@ -190,6 +190,12 @@ public:
 	const GLuint S_WIDTH = 1024, S_HEIGHT = 1024;
 	GLuint depthMap;
 
+	//shadow debug stuff
+	int DEBUG_LIGHT = 0;
+	int GEOM_DEBUG = 1;
+	shared_ptr<Program> DepthProgDebug;
+	shared_ptr<Program> DebugProg;
+
 	// bool FirstTime = true;
 
 
@@ -253,6 +259,12 @@ public:
 		{
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
+
+		//shadow debug stuff
+		if (key == GLFW_KEY_L && action == GLFW_PRESS){
+			DEBUG_LIGHT = !DEBUG_LIGHT;
+		}
+
 		//Keys to control the camera movement
 		if (!camUpdate && !isOverheadView && (possessedActor == NULL))
 		{
@@ -887,6 +899,41 @@ public:
 		progTerrain->addAttribute("vertTex");
 		progTerrain->addUniform("lightSource"); //lighting uniform
 
+		//shadow debug stuff
+		DepthProgDebug = make_shared<Program>();
+		DepthProgDebug->setVerbose(true);
+		DepthProgDebug->setShaderNames(resourceDirectory + "/depth_vertDebug.glsl", resourceDirectory + "/depth_fragDebug.glsl");
+		if (!DepthProgDebug->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		DepthProgDebug->addUniform("LP");
+		DepthProgDebug->addUniform("LV");
+		DepthProgDebug->addUniform("P");
+		DepthProgDebug->addUniform("M");
+		DepthProgDebug->addUniform("V");
+		DepthProgDebug->addUniform("eye");
+		DepthProgDebug->addUniform("lightSource");
+		DepthProgDebug->addAttribute("vertPos");
+		//un-needed, but easier then modifying shape
+		DepthProgDebug->addAttribute("vertNor");
+		DepthProgDebug->addAttribute("vertTex");
+
+		//shadow debug stuff
+		DebugProg = make_shared<Program>();
+		DebugProg->setVerbose(true);
+		DebugProg->setShaderNames(resourceDirectory + "/pass_vert.glsl", resourceDirectory + "/pass_texfrag.glsl");
+		if (!DebugProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		DebugProg->addUniform("texBuf");
+		DebugProg->addAttribute("vertPos");
+
 		//shadow stuff
 		DepthProg = make_shared<Program>();
 		DepthProg->setVerbose(true);
@@ -1505,7 +1552,7 @@ public:
 
 	//shadow stuff
 	mat4 SetOrthoMatrix(shared_ptr<Program> curShade) {
-		mat4 ortho = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, 0.1f, 50.0f);
+		mat4 ortho = glm::ortho(-10.0f, 40.0f, -20.0f, 40.0f, 0.5f, 50.0f);
 		//fill in the glUniform call to send to the right shader!
 		glUniformMatrix4fv(curShade->getUniform("LP"), 1, GL_FALSE, value_ptr(ortho));
 		return ortho;
@@ -1572,31 +1619,67 @@ public:
 		// Clear framebuffer.
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		
-		//now render the scene like normal
-		//set up shadow shader
-		ShadowProg->bind();
-		/* also set up light depth map */
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
-		glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
-		//render scene
-		SetProjectionMatrix(ShadowProg);
-		//attemp to set V matrix using our cam setup
-		glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-		glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+		if (DEBUG_LIGHT) {
+			/* code to draw the light depth buffer */
+			//geometry style debug on light - test transforms, draw geometry from light
+			//perspective
+			if (GEOM_DEBUG) {
+				DepthProgDebug->bind();
+				//render scene from light's point of view
+				mat4 LP = SetOrthoMatrix(DepthProgDebug);
+				//mat4 LV = SetLightView(DepthProgDebug, vec3(1,4,1), vec3(0, 0, 0), vec3(0, 1, 0));
 
-		//ToDo shadow : find way to replace
-		//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
-		renderSceneActors(M, P, ShadowProg, true);
-		renderWeapons(M, P, ShadowProg, true);
-		renderTerrain(M, P, ShadowProg, true);
-		// render all the actors in the scene
-		// Render all objs in the terrain
-		
+				mat4 LV = SetLightView(DepthProgDebug, g_light, vec3(0, 0, 0), vec3(0, 1, 0));
 
-		ShadowProg->unbind();
+				LS = LP * LV;
+
+				//drawScene(DepthProgDebug, ShadowProg->getUniform("Texture0"), 0);
+				renderSceneActors(M, P, DepthProgDebug, false);
+				renderTerrain(M, P, DepthProgDebug, false);
+				renderWeapons(M, P, DepthProgDebug, false);
+
+				DepthProgDebug->unbind();
+			}
+			else {
+				//actually draw the light depth map
+				DebugProg->bind();
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, depthMap);
+				glUniform1i(DebugProg->getUniform("texBuf"), 0);
+				glEnableVertexAttribArray(0);
+				glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+				glDisableVertexAttribArray(0);
+				DebugProg->unbind();
+			}
+		}
+		else {
+			//now render the scene like normal
+			//set up shadow shader
+			ShadowProg->bind();
+			/* also set up light depth map */
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
+			glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
+			glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
+			//render scene
+			SetProjectionMatrix(ShadowProg);
+			//attemp to set V matrix using our cam setup
+			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+
+			//ToDo shadow : find way to replace
+			//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+			renderSceneActors(M, P, ShadowProg, true);
+			renderWeapons(M, P, ShadowProg, true);
+			renderTerrain(M, P, ShadowProg, true);
+			// render all the actors in the scene
+			// Render all objs in the terrain
+
+
+			ShadowProg->unbind();
+		}
 		
 	}
 
