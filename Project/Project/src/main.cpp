@@ -181,6 +181,9 @@ public:
 	float velocity = 0.0f;
 	bool canJump = true;
 	bool readyToSwitch = false;
+
+	//Uniform spatial subdivison
+    vector<vector<shared_ptr<GameObject> > > UniformStructure;
 	
 
 	WindowManager * windowManager = nullptr;
@@ -573,6 +576,45 @@ public:
 	}
 
 
+	void BulletHitTest(vector<shared_ptr<GameObject> > &HitObjects, int teamNum){
+        //Loop to see what the closest object hit was
+        float minDistance = 1000000.0f;
+        float minDistanceIndex = -1;
+
+        for (int i = 0; i < HitObjects.size(); i++) {
+            float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
+            if (currDistance < minDistance) {
+                minDistance = currDistance;
+                minDistanceIndex = i;
+            }
+        }
+
+        if (HitObjects.size() != 0) {
+
+            //Set Object Bullet hit for rendering collision
+            hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
+            bulletStartPos = possessedActor->position;
+            didHitObject = true;
+
+            if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
+                HitObjects[minDistanceIndex]->health -= 1.0f;
+                if (HitObjects[minDistanceIndex]->health <= 0.0f) {
+                    HitObjects[minDistanceIndex]->beenShot = true;
+                    if(teamNum == 1){
+                        numAlienUnits--;
+                    }
+                    else{
+                        numRobotUnits--;
+                    }
+                }
+            }
+        }
+        else {
+            bulletStartPos = possessedActor->position;
+        }
+	}
+
+
 	void rayTraceOperations(vec3 ray_wor, vector<shared_ptr<GameObject> > &TeamArray, vector<shared_ptr<GameObject> > &UsedArray, int teamNum) {
 		if (possessedActor == NULL) {
 			for (int i = 0; i < TeamArray.size(); i++) {
@@ -601,6 +643,19 @@ public:
 						TeamArray[i]->isUsed = true;
 					}
 
+					//Turn off cursor and starts interpolate of possesed unit
+					isCaptureCursor = !isCaptureCursor;
+					if (isOverheadView && (possessedActor != NULL))
+					{
+						camUpdate = true;
+					}
+					else
+					{
+						isOverheadView = true;
+						firstPersonUI.setRender(false);
+						overViewUI.setRender(true);
+					}
+
 				}
 
 			}
@@ -609,10 +664,14 @@ public:
 		//Only run weapon loop if possessed actor exists
 		else if (possessedActor != NULL) {
 
-			vector<shared_ptr<GameObject> > HitObjects;
-
 			//if weapon is shotgun
 			if (possessedActor->currWeapon == 1) {
+
+                vector<shared_ptr<GameObject> > HitObjects1;
+                vector<shared_ptr<GameObject> > HitObjects2;
+                vector<shared_ptr<GameObject> > HitObjects3;
+                vector<shared_ptr<GameObject> > HitObjects4;
+                vector<shared_ptr<GameObject> > HitObjects5;
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -649,16 +708,46 @@ public:
 
 				//Check ray collisions with all game objects
 				for (int i = 0; i < AllGameObjects.size(); i++) {
-					bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+					//bool isClicked1 = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+					bool isClicked1 = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
+                    bool isClicked2 = possessedActor->FirePistol(ray_left, AllGameObjects[i], curCamCenter);
+                    bool isClicked3 = possessedActor->FirePistol(ray_right, AllGameObjects[i], curCamCenter);
+                    bool isClicked4 = possessedActor->FirePistol(ray_down, AllGameObjects[i], curCamCenter);
+                    bool isClicked5 = possessedActor->FirePistol(ray_up, AllGameObjects[i], curCamCenter);
 
-					if (isClicked) {
+
+					if (isClicked1) {
 						//If ray hit object add to vector of hit objects
-						HitObjects.push_back(AllGameObjects[i]);
+						HitObjects1.push_back(AllGameObjects[i]);
 					}
+                    if (isClicked2) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects2.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked3) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects3.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked4) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects4.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked5) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects5.push_back(AllGameObjects[i]);
+                    }
 				}
+
+                BulletHitTest(HitObjects1, teamNum);
+                BulletHitTest(HitObjects2, teamNum);
+                BulletHitTest(HitObjects3, teamNum);
+                BulletHitTest(HitObjects4, teamNum);
+                BulletHitTest(HitObjects5, teamNum);
 
 			}
 			else if (possessedActor->currWeapon == 0) {
+
+                vector<shared_ptr<GameObject> > HitObjects;
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -683,37 +772,8 @@ public:
 					}
 				}
 
-			}
+				BulletHitTest(HitObjects, teamNum);
 
-			//Loop to see what the closest object hit was
-			float minDistance = 1000000.0f;
-			float minDistanceIndex = -1;
-
-			for (int i = 0; i < HitObjects.size(); i++) {
-				float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
-				if (currDistance < minDistance) {
-					minDistance = currDistance;
-					minDistanceIndex = i;
-				}
-			}
-
-			if (HitObjects.size() != 0) {
-
-				//Set Object Bullet hit for rendering collision
-				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
-				bulletStartPos = possessedActor->position;
-				didHitObject = true;
-
-				if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
-					HitObjects[minDistanceIndex]->health -= 1.0f;
-					if (HitObjects[minDistanceIndex]->health <= 0.0f) {
-						HitObjects[minDistanceIndex]->beenShot = true;
-						numAlienUnits--;
-					}
-				}
-			}
-			else {
-				bulletStartPos = possessedActor->position;
 			}
 
 		}
@@ -1362,8 +1422,12 @@ public:
 		float tileScale = 2.0f;
 		shared_ptr<GameObject> terrainTemp;
 		float verticalOffset = (height * tileScale)/2.0f, horizontalOffset = (width * tileScale)/2.0f;
+
 		for (int i = 0; i < width; i++)
 		{
+            vector<shared_ptr<GameObject> > tempHeightVector(height);
+            UniformStructure.push_back(tempHeightVector);
+
 			for (int j = 0; j < height; j++)
 			{
 				int red = getColor(dataLayout, width, i, j, 0);
@@ -1379,6 +1443,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
@@ -1388,6 +1455,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
@@ -1397,6 +1467,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green add a shotgun
 				{
@@ -1413,6 +1486,9 @@ public:
 					shared_ptr<Weapon> shotty = make_shared<Weapon>("shotbun", shotgun, "../resources/", prog, position, tileOrientation, true, 2, false, 1);
 					weapons.push_back(shotty);
 
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
+
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -1428,6 +1504,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 0)) // If the color is red boundry tile
 				{
@@ -1459,6 +1538,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				
 			}
@@ -2195,13 +2277,95 @@ public:
 		}
 	}
 
+    bool GravityCollision2(vec3 futurePosition){
+
+
+        if(possessedActor != NULL) {
+
+            vector<shared_ptr<GameObject> > nearbyBlocks;
+
+            int zSize = UniformStructure.size();
+            int xSize = UniformStructure[0].size();
+
+            int i = (int) (((futurePosition.z * -1.0f) + zSize) / 2.0f);
+            int j = (int) (((futurePosition.x * -1.0f) + xSize) / 2.0f);
+            nearbyBlocks.push_back(UniformStructure[i][j]);
+
+            //Check block to the right
+            if (j + 1 < xSize) {
+                int newJ = j + 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block to the left
+            if (j - 1 >= 0) {
+                int newJ = j - 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block down right
+            if (j + 1 < xSize && i + 1 < zSize) {
+                int newJ = j + 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up right
+            if (j + 1 < xSize && i - 1 >= 0) {
+                int newJ = j + 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up left
+            if (j - 1 >= 0 && i - 1 >= 0) {
+                int newJ = j - 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block down left
+            if (j - 1 >= 0 && i + 1 < zSize) {
+                int newJ = j - 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up
+            if (i - 1 >= 0) {
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+            //Check down block
+            if (i + 1 < zSize) {
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+
+            for(int k = 0; k < nearbyBlocks.size(); k++){
+                bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= nearbyBlocks[k]->bboxCenter.x && nearbyBlocks[k]->bboxCenter.x + nearbyBlocks[k]->bboxSize.x >= futurePosition.x;
+                bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= nearbyBlocks[k]->bboxCenter.y && nearbyBlocks[k]->bboxCenter.y + nearbyBlocks[k]->bboxSize.y >= futurePosition.y;
+                bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= nearbyBlocks[k]->bboxCenter.z && nearbyBlocks[k]->bboxCenter.z + nearbyBlocks[k]->bboxSize.z >= futurePosition.z;
+
+                if(collisionX && collisionY && collisionZ){
+                    return collisionX && collisionY && collisionZ;
+                }
+            }
+            return false;
+
+        }
+
+    }
+
 	void ApplyGravity()
 	{
 		if(possessedActor != NULL)
 		{
 			float NewY = possessedActor->position.y + (velocity * deltaTime);
 			vec3 NewPosition = vec3(possessedActor->position.x, NewY, possessedActor->position.z);
-			if (!GravityGroundCollision(NewPosition)) {
+			if (!GravityCollision2(NewPosition)) {
 				possessedActor->position.y = NewY;
 			}
 			else{
