@@ -75,7 +75,8 @@ if(WIN32)
   # c++0x is enabled by default.
   # -Wall produces way too many warnings.
   # -pedantic is not supported.
-  target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/Win32-visualStudio/irrKlang.lib)
+  #target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/Win32-visualStudio/irrKlang.lib)
+  target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/Win64/irrKlang.lib)
   target_link_libraries(${CMAKE_PROJECT_NAME} opengl32.lib)
 else()
 
