@@ -8,7 +8,7 @@ file(GLOB SOURCES "src/*.cpp" "resources/src/*.c" "src/BaseCode/*.cpp" "resource
 
 # We don't really need to include header and resource files to build, but it's
 # nice to have them show up in IDEs.
-file(GLOB_RECURSE HEADERS "src/*.h" "src/BaseCode/*.h" "resources/include/*.h" "resources/include/glad/*.h" "resources/include/KHR/*.h")
+file(GLOB_RECURSE HEADERS "src/*.h" "src/BaseCode/*.h" "resources/include/*.h" "resources/include/glad/*.h" "resources/include/KHR/*.h" "resources/include/irrKlang/include/*.h")
 file(GLOB_RECURSE GLSL "resources/*.glsl")
 
 include_directories("resources/include")
@@ -75,8 +75,13 @@ if(WIN32)
   # c++0x is enabled by default.
   # -Wall produces way too many warnings.
   # -pedantic is not supported.
+  target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/Win32-visualStudio/irrKlang.lib)
   target_link_libraries(${CMAKE_PROJECT_NAME} opengl32.lib)
 else()
+
+
+  target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/linux/libIrrKlang.so)
+
   # Enable all pedantic warnings.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -pedantic")
 

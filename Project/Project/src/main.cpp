@@ -21,6 +21,8 @@
 #include "ourCoreFuncs.h"
 #include "UIController.h"
 #include "Weapon.h"
+#include "irrKlang/include/irrKlang.h"
+#pragma comment(lib, "irrKlang.lib")
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -28,6 +30,7 @@
 
 using namespace std;
 using namespace glm;
+using namespace irrklang;
 
 //------ Globals
 vector<tinyobj::shape_t> robotDefault, robot1;
@@ -186,6 +189,9 @@ public:
 
 	//Uniform spatial subdivison
     vector<vector<shared_ptr<GameObject> > > UniformStructure;
+
+	//Sound Engine
+	ISoundEngine *SoundEngine = createIrrKlangDevice();
 	
 
 	WindowManager * windowManager = nullptr;
@@ -673,9 +679,14 @@ public:
 						overViewUI.setRender(true);
 					}
 
+                    SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+
 				}
 
 			}
+
+
+
 		}
 
 		//Only run weapon loop if possessed actor exists
@@ -761,6 +772,8 @@ public:
                 BulletHitTest(HitObjects4, teamNum);
                 BulletHitTest(HitObjects5, teamNum);
 
+                SoundEngine->play2D("../resources/shotgun.mp3", GL_FALSE);
+
 			}
 			else if (possessedActor->currWeapon == 0) {
 
@@ -790,6 +803,8 @@ public:
 				}
 
 				BulletHitTest(HitObjects, teamNum);
+
+                SoundEngine->play2D("../resources/laser.mp3", GL_FALSE);
 
 			}
 
@@ -3057,6 +3072,7 @@ int main(int argc, char **argv)
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
 	application->initUI(windowManager->getHandle());
+	application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE);
 
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
