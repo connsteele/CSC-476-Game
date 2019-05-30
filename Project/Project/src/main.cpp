@@ -1920,7 +1920,7 @@ public:
 		glViewport(0, 0, S_WIDTH, S_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glCullFace(GL_LEFT);
+		//glCullFace(GL_LEFT);
 		
 		//set up shadow shader
 		//render scene
@@ -2975,6 +2975,9 @@ public:
 			renderWeapons(M, P, V, prog, true);
 			SetMaterial(1, prog);
 			renderTerrain(M, P, V, prog, true);
+
+			P->popMatrix();
+			prog->unbind();
 
 		}
 
