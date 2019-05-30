@@ -2795,10 +2795,15 @@ public:
 	}
 
 	void renderSkybox(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M) {
+		auto V = make_shared<MatrixStack>();
+		V->pushMatrix();
+		V->lookAt(curCamEye, curCamCenter, up);
 		skyProg->bind();
+
 		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 		glUniformMatrix4fv(skyProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-		glUniformMatrix4fv(skyProg->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+		glUniformMatrix4fv(skyProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+		M->rotate(-2.0f, vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(skyProg->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 		// skybox cube
 		glActiveTexture(GL_TEXTURE0);
