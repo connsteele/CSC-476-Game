@@ -903,15 +903,16 @@ public:
 			break;
 		case 3: //Mine: red
 			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.2, 0.2);
+			glUniform3f(shader->getUniform("MatAmb"), 1.0, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.83, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(shader->getUniform("shine"), 20.0);
+			glUniform1f(shader->getUniform("shine"), 100.0);
 			break;
 		case 4: //Mine: green
-			glUniform3f(shader->getUniform("MatAmb"), 0.2, 0.4, 0.2);
+			glUniform3f(shader->getUniform("MatAmb"), 0.2, 1.0, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.13, 0.8, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(shader->getUniform("shine"), 20.0);
+			glUniform1f(shader->getUniform("shine"), 100.0);
 			break;
 		case 5: // White
 			glUniform3f(shader->getUniform("MatAmb"), 1.0, 1.0, 1.0);
@@ -2234,9 +2235,18 @@ public:
 					prog->bind();
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, Tex_White);
-					SetMaterial(5, prog);
+					//SetMaterial(5, prog);
+					// Draw player health
 					for (float j = 0.0f; j < sceneActorGameObjs[i]->health; j += 1.0f)
 					{ 
+						if (sceneActorGameObjs[i]->isUsed)
+						{
+							SetMaterial(5, prog);
+						}
+						else // If the unit has not been used use golden health boxes
+						{
+							SetMaterial(2, prog);
+						}
 						M->pushMatrix();
 						M->translate(vec3(-1.0f + ( 2 * j ), 4.5f, 0.0f));
 						M->scale(0.5f);
@@ -2248,6 +2258,22 @@ public:
 						cube->draw(prog);
 						M->popMatrix();
 					}
+
+					/*SetMaterial(2, prog);
+					if (sceneActorGameObjs[i]->isUsed)
+					{
+						M->pushMatrix();
+						M->translate(vec3(0.0f, 6.f, 0.0f));
+						M->scale(0.5f);
+						glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+						glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+						glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+						glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+						glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+						cube->draw(prog);
+						M->popMatrix();
+					}*/
+
 					prog->unbind();
 
 					shader->bind();
@@ -3006,9 +3032,9 @@ public:
 			M->pushMatrix();
 			M->translate(vec3(-13.0f, 0.0f, -15.0f));
 			// y value scale from 3.0f to 0.0f
-			float y = ((turnLength - (glfwGetTime() - turnStartTime)) / turnLength) * 3;
+			float y = ((turnLength - (glfwGetTime() - turnStartTime)) / turnLength) * 3.0f;
 			//max-cur/max * 3  -> 1 - 0 to 3 - 0
-			M->scale(vec3(0.5f, 0.1f, 0.5f));
+			M->scale(vec3(0.5f, y, 0.5f));
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
