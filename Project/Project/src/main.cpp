@@ -1157,6 +1157,7 @@ public:
 		tex_prog->addUniform("texBuf");
 		tex_prog->addAttribute("vertPos");
 		tex_prog->addUniform("t");
+		tex_prog->addUniform("mode");
 
 		//create two frame buffer objects to toggle between
 		glGenFramebuffers(2, frameBuf);
