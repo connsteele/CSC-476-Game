@@ -902,7 +902,6 @@ public:
 			glUniform1f(shader->getUniform("shine"), 27.9);
 			break;
 		case 3: //Mine: red
-			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatAmb"), 1.0, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.83, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
