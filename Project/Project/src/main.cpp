@@ -600,7 +600,7 @@ public:
 
             if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
                 HitObjects[minDistanceIndex]->health -= 1.0f;
-                if (HitObjects[minDistanceIndex]->health <= 0.0f) {
+                if (HitObjects[minDistanceIndex]->health == 0.0f) {
                     HitObjects[minDistanceIndex]->beenShot = true;
                     if(teamNum == 1){
                         numAlienUnits--;
@@ -626,7 +626,7 @@ public:
 
 				bool isClicked = RayTraceCamera(ray_wor, TeamArray[i]);
 
-				if (isClicked && possessedActor == NULL && isOverheadView) {
+				if (isClicked && possessedActor == NULL && isOverheadView && TeamArray[i]->health > 0) {
 
 					// Check if unit has been used (check if not empty first)
 					if (!UsedArray.empty()) {
@@ -718,23 +718,23 @@ public:
                     bool isClicked5 = possessedActor->FirePistol(ray_up, AllGameObjects[i], curCamCenter);
 
 
-					if (isClicked1) {
+					if (isClicked1 && AllGameObjects[i]->health > 0) {
 						//If ray hit object add to vector of hit objects
 						HitObjects1.push_back(AllGameObjects[i]);
 					}
-                    if (isClicked2) {
+                    if (isClicked2 && AllGameObjects[i]->health > 0) {
                         //If ray hit object add to vector of hit objects
                         HitObjects2.push_back(AllGameObjects[i]);
                     }
-                    if (isClicked3) {
+                    if (isClicked3 && AllGameObjects[i]->health > 0) {
                         //If ray hit object add to vector of hit objects
                         HitObjects3.push_back(AllGameObjects[i]);
                     }
-                    if (isClicked4) {
+                    if (isClicked4 && AllGameObjects[i]->health > 0) {
                         //If ray hit object add to vector of hit objects
                         HitObjects4.push_back(AllGameObjects[i]);
                     }
-                    if (isClicked5) {
+                    if (isClicked5 && AllGameObjects[i]->health > 0) {
                         //If ray hit object add to vector of hit objects
                         HitObjects5.push_back(AllGameObjects[i]);
                     }
@@ -768,7 +768,7 @@ public:
 				for (int i = 0; i < AllGameObjects.size(); i++) {
 					bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
-					if (isClicked) {
+					if (isClicked && AllGameObjects[i]->health > 0) {
 						//If ray hit object add to vector of hit objects
 						HitObjects.push_back(AllGameObjects[i]);
 					}
