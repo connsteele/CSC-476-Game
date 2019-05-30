@@ -79,7 +79,7 @@ vector<shared_ptr<GameObject> > alienUnits;
 vector<vec3> coverCubesLocs;
 
 //--- Variables that control hierarchical animation
-float headRot = 0.0f;
+float headRot = 0.0f, deathRot = 0.0f, deathTranslation = 0.0f;
 bool headBob = false; // controls what way to bob
 
 
@@ -1256,26 +1256,32 @@ public:
 
 		roboBody = make_shared<Shape>();
 		roboBody->loadMesh(resourceDirectory + "/robo_body.obj");
+		roboBody->resize();
 		roboBody->init();
 
 		roboRarm = make_shared<Shape>();
 		roboRarm->loadMesh(resourceDirectory + "/robo_rarm.obj");
+		roboRarm->resize();
 		roboRarm->init();
 
 		roboLarm = make_shared<Shape>();
 		roboLarm->loadMesh(resourceDirectory + "/robo_larm.obj");
+		roboLarm->resize();
 		roboLarm->init();
 
 		roboRleg = make_shared<Shape>();
 		roboRleg->loadMesh(resourceDirectory + "/robo_rleg.obj");
+		roboRleg->resize();
 		roboRleg->init();
 
 		roboLleg = make_shared<Shape>();
 		roboLleg->loadMesh(resourceDirectory + "/robo_lleg.obj");
+		roboLleg->resize();
 		roboLleg->init();
 
 		roboHead = make_shared<Shape>();
 		roboHead->loadMesh(resourceDirectory + "/robo_head.obj");
+		roboHead->resize();
 		roboHead->init();
 
 		// Initialize the cube OBJ model
@@ -1976,7 +1982,7 @@ public:
 					SetMaterial(1, shader);
 				}
 
-				// Only draw units that aren't dead
+				// Draw the idle animation for robots that aren't dead
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
@@ -1984,61 +1990,161 @@ public:
 					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
 
 
-					// Draw the hiearchical Model
-
+					//---  Draw the hiearchical Model
 					// Body
-					//M->pushMatrix();
-					//glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					//roboBody->draw(shader);
+					M->pushMatrix();
+					M->translate(vec3(0.0f, -0.2f, 0.0f));
+					M->scale(0.425f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboBody->draw(shader);
 
-					//// Head
-					//M->pushMatrix();
+					// Head
+					M->pushMatrix();
+					// M->loadIdentity();
+					M->translate(vec3(0.0f, 2.0f, 0.0f));
+					M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboHead->draw(shader);
+					M->popMatrix();
+					
+					// Left Arm
+					M->pushMatrix();
+					M->translate(vec3(1.0f, 1.0f, 0.5f));
+					M->scale(2.0f);
+					M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLarm->draw(shader);
+					M->popMatrix();
+
+					// Right Arm
+					M->pushMatrix();
+					M->translate(vec3(-1.0f, -0.2f, 0.2f));
+					M->scale(1.0f);
+					M->rotate(-headRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRarm->draw(shader);
+					M->popMatrix();
+
+					// Right Leg
+					M->pushMatrix();
+					M->translate(vec3(-0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRleg->draw(shader);
+					M->popMatrix();
+
+					// Left Leg
+					M->pushMatrix();
+					M->translate(vec3(0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLleg->draw(shader);
+					M->popMatrix();
+					
+
+					M->popMatrix(); // Pop the Matrix for the whole body
+				}
+				else // Draw and animate dead robots
+				{
+					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
+
+
+					//---  Draw the hiearchical Model
+					// Body
+					M->pushMatrix();
+					M->translate(vec3(0.0f, -0.2f + deathTranslation, 0.0f));
+					M->scale(0.425f);
+					M->rotate(deathRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboBody->draw(shader);
+
+					// Head
+					M->pushMatrix();
+					// M->loadIdentity();
+					M->translate(vec3(0.0f, 2.0f, 0.0f));
 					//M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
-					//glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					//roboHead->draw(shader);
-					//M->popMatrix();
-					//
-					////M->pushMatrix();
-					////glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					//roboLarm->draw(shader);
-					////M->popMatrix();
-					//roboRarm->draw(shader);
-					//roboRleg->draw(shader);
-					//roboLleg->draw(shader);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboHead->draw(shader);
+					M->popMatrix();
 
-					//M->popMatrix();
+					// Left Arm
+					M->pushMatrix();
+					M->translate(vec3(1.0f, 1.0f, 0.5f));
+					M->scale(2.0f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLarm->draw(shader);
+					M->popMatrix();
+
+					// Right Arm
+					M->pushMatrix();
+					M->translate(vec3(-1.0f, -0.2f, 0.2f));
+					M->scale(1.0f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRarm->draw(shader);
+					M->popMatrix();
+
+					// Right Leg
+					M->pushMatrix();
+					M->translate(vec3(-0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRleg->draw(shader);
+					M->popMatrix();
+
+					// Left Leg
+					M->pushMatrix();
+					M->translate(vec3(0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLleg->draw(shader);
+					M->popMatrix();
+
+
+					M->popMatrix(); // Pop the Matrix for the whole body
+
+					//----- Update Animations for the Dead robots Hierachical Model
+					if (deathRot > -1.7f)
+					{
+						deathRot -= 0.5 * deltaTime;
+					}
+					if (deathTranslation > -0.6)
+					{
+						deathTranslation -= 0.25 * deltaTime;
+					}
+
 				}
 				
 
 				M->popMatrix();
 			}
 			
-		}
+		} // End of render loop
 
-
-		// ----  Update Animations
+		// ----  Update Animations for the living robots Hierachical Model
 		if (headRot > 0.12 || headRot < -0.12) // toggle the bob direction
 		{
 			headBob = !headBob;
 		}
 		if (headBob)
 		{
-			headRot += 0.0015; // use with delta time
+			headRot += 0.15 * deltaTime; // use with delta time
 		}
 		else
 		{
-			headRot -= 0.0015;
+			headRot -= 0.15 * deltaTime;
 		}
 		
-
-		//shader bind by caller
-		//shader->unbind(); // Unbind the passed in Shader
+		
 
 		return;
-
 	}
 
 	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
