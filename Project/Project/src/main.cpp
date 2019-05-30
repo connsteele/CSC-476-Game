@@ -656,6 +656,7 @@ public:
 							possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
 							UsedArray.push_back(TeamArray[i]);
 							TeamArray[i]->isUsed = true;
+                            SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
 						}
 					}
 					// Add first unit to array
@@ -664,6 +665,7 @@ public:
 						possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
 						UsedArray.push_back(TeamArray[i]);
 						TeamArray[i]->isUsed = true;
+                        SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
 					}
 
 					//Turn off cursor and starts interpolate of possesed unit
@@ -678,8 +680,6 @@ public:
 						firstPersonUI.setRender(false);
 						overViewUI.setRender(true);
 					}
-
-                    SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
 
 				}
 
@@ -744,23 +744,23 @@ public:
                     bool isClicked5 = possessedActor->FirePistol(ray_up, AllGameObjects[i], curCamCenter);
 
 
-					if (isClicked1 && AllGameObjects[i]->health > 0) {
+					if (isClicked1 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
 						//If ray hit object add to vector of hit objects
 						HitObjects1.push_back(AllGameObjects[i]);
 					}
-                    if (isClicked2 && AllGameObjects[i]->health > 0) {
+                    if (isClicked2 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
                         //If ray hit object add to vector of hit objects
                         HitObjects2.push_back(AllGameObjects[i]);
                     }
-                    if (isClicked3 && AllGameObjects[i]->health > 0) {
+                    if (isClicked3 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
                         //If ray hit object add to vector of hit objects
                         HitObjects3.push_back(AllGameObjects[i]);
                     }
-                    if (isClicked4 && AllGameObjects[i]->health > 0) {
+                    if (isClicked4 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
                         //If ray hit object add to vector of hit objects
                         HitObjects4.push_back(AllGameObjects[i]);
                     }
-                    if (isClicked5 && AllGameObjects[i]->health > 0) {
+                    if (isClicked5 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
                         //If ray hit object add to vector of hit objects
                         HitObjects5.push_back(AllGameObjects[i]);
                     }
@@ -796,7 +796,7 @@ public:
 				for (int i = 0; i < AllGameObjects.size(); i++) {
 					bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
-					if (isClicked && AllGameObjects[i]->health > 0) {
+					if (isClicked && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
 						//If ray hit object add to vector of hit objects
 						HitObjects.push_back(AllGameObjects[i]);
 					}
