@@ -1561,12 +1561,12 @@ public:
 		std::cout << "Depth unbind" << std::endl;
 		glCullFace(GL_BACK);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 
 		glViewport(0, 0, width, height);
 		// Clear framebuffer.
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		
 		//now render the scene like normal
@@ -1585,6 +1585,10 @@ public:
 
 		//ToDo shadow : find way to replace
 		//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
+		//set up to render to buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
+		// Clear framebuffer.
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		renderSceneActors(M, P, ShadowProg, true);
 		renderWeapons(M, P, ShadowProg, true);
 		renderTerrain(M, P, ShadowProg, true);
@@ -2131,6 +2135,10 @@ public:
 		int width, height;
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 		glViewport(0, 0, width, height);
+		//set up to render to buffer
+		//glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
+		// Clear framebuffer.
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Set Delta Time and lastFrame
 		float currentFrame = glfwGetTime();
@@ -2149,16 +2157,11 @@ public:
 		lastFrame = currentFrame;
 		elapsedTime += deltaTime;		
 
-		//set up to render to buffer
-		//glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
-		// Clear framebuffer.
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 		/* Leave this code to just draw the meshes alone */
 		float aspect = width / (float)height;
 
 
-
+		
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView) // Possession
 		{
@@ -2243,8 +2246,8 @@ public:
 		P->perspective(45.0f, aspect, 0.01f, 200.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well, last arguement is culling distance
 
 		/*Draw the actual scene*/
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		M->pushMatrix(); // Matrix for the Scene
 
@@ -2353,19 +2356,20 @@ public:
 		P->popMatrix(); // This wasnt here b4
 
 		//regardless unbind the FBO 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		/* code to write out the FBO (texture) just once */
-		//if (FirstTime) {
-			//assert(GLTextureWriter::WriteImage(texBuf[0], "Texture_output.png"));
-			//FirstTime = 0;
-		//}
+		if (FirstTime) {
+			assert(GLTextureWriter::WriteImage(texBuf[0], "Texture_output.png"));
+			FirstTime = 0;
+			printf("first\n");
+		}
 
 		/* TODO - add code so that you can call the blur as much as needed */
-		//glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//Blur(texBuf[0]);
+		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Blur(texBuf[1]);
 		/*for (int i = 0; i < 17; i++) {
 			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[(i + 1) % 2]);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2374,8 +2378,8 @@ public:
 
 		/* now draw the actual output  to the default framebuffer - ie display */
 		/* note the current base code is just using one FBO and texture */
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//Blur(texBuf[0]);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Blur(texBuf[0]);
 	}
 
 };
