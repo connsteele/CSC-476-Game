@@ -51,7 +51,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White;
 std::shared_ptr<Program> progTerrain;
 
 // shadow stuff
@@ -1433,6 +1433,19 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
+		str = resourceDirectory + "/images/white.bmp";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+		glGenTextures(1, &Tex_White);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_White);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
 
 		//---  Load the image of the map file
 		str = resourceDirectory + "/images/Map1.bmp";
@@ -2138,6 +2151,8 @@ public:
 				// Draw the idle animation for robots that aren't dead
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
@@ -2197,11 +2212,37 @@ public:
 					roboLleg->draw(shader);
 					M->popMatrix();
 					
+					shader->unbind();
+
+					// ---- Draw UI elements above the player
+					// Bind a white texture
+					prog->bind();
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_White);
+					SetMaterial(5, prog);
+					for (float j = 0.0f; j < sceneActorGameObjs[i]->health; j += 1.0f)
+					{ 
+						M->pushMatrix();
+						M->translate(vec3(-1.0f + ( 2 * j ), 4.5f, 0.0f));
+						M->scale(0.5f);
+						glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+						glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+						glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+						glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+						glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+						cube->draw(prog);
+						M->popMatrix();
+					}
+					prog->unbind();
+
+					shader->bind();
 
 					M->popMatrix(); // Pop the Matrix for the whole body
 				}
 				else // Draw and animate dead robots
 				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
