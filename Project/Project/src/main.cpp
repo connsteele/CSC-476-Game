@@ -243,7 +243,7 @@ public:
 	shared_ptr<Program> DepthProgDebug;
 	shared_ptr<Program> DebugProg;
 
-	//VFC stuff
+	//VFC 
 	bool CULL = false;
 	bool DEBUG_CULL = false;
 	vec4 Left, Right, Bottom, Top, Near, Far;
@@ -1152,7 +1152,7 @@ public:
 		//set up the shaders to blur the FBO decomposed just a placeholder pass thru now
 		tex_prog = make_shared<Program>();
 		tex_prog->setVerbose(true);
-		tex_prog->setShaderNames(resourceDirectory + "/pass_vert.glsl", resourceDirectory + "/tex_frag.glsl");
+		tex_prog->setShaderNames(resourceDirectory + "/tex_vert.glsl", resourceDirectory + "/tex_frag.glsl");
 		tex_prog->init();
 		tex_prog->addUniform("texBuf");
 		tex_prog->addAttribute("vertPos");
