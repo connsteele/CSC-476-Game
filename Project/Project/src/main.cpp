@@ -21,6 +21,8 @@
 #include "ourCoreFuncs.h"
 #include "UIController.h"
 #include "Weapon.h"
+#include "irrKlang/include/irrKlang.h"
+#pragma comment(lib, "irrKlang.lib")
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -28,6 +30,7 @@
 
 using namespace std;
 using namespace glm;
+using namespace irrklang;
 
 //------ Globals
 vector<tinyobj::shape_t> robotDefault, robot1;
@@ -51,7 +54,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White;
 std::shared_ptr<Program> progTerrain;
 
 // shadow stuff
@@ -79,7 +82,9 @@ vector<shared_ptr<GameObject> > alienUnits;
 vector<vec3> coverCubesLocs;
 
 //--- Variables that control hierarchical animation
-float headRot = 0.0f;
+float headRot = 0.0f, deathRot = 0.0f, deathTranslation = 0.0f;
+vector<float> deathRots(8, 0.0f);
+vector<float> deathTranslations(8, 0.0f);
 bool headBob = false; // controls what way to bob
 
 
@@ -93,7 +98,7 @@ float elapsedTime = 0.0f;
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 20; // use 11
+int turnLength = 1100; // use 11
 
 bool isCaptureCursor = false;
 
@@ -118,6 +123,23 @@ vec3 curCamCenter;
 float orbRotate = 0.0;
 float smallRotate = 0.0;
 float bunnyRotate = 0.0;
+
+//Skybox buffers
+unsigned int skyboxVAO, skyboxVBO;
+
+//Skybox texture
+unsigned int cubemapTexture;
+
+//Skybox image files
+vector<std::string> faces
+{
+	"../resources/sky-right.png",
+	"../resources/sky-left.png",
+	"../resources/sky-top.png",
+	"../resources/sky-bottom.png",
+	"../resources/sky-back.png",
+	"../resources/sky-front.png"
+};
 
 //UI
 UIController mainMenuUI;
@@ -167,13 +189,18 @@ public:
 	float velocity = 0.0f;
 	bool canJump = true;
 	bool readyToSwitch = false;
+
+	//Uniform spatial subdivison
+    vector<vector<shared_ptr<GameObject> > > UniformStructure;
+
+	//Sound Engine
+	ISoundEngine *SoundEngine = createIrrKlangDevice();
 	
 
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog;
-	std::shared_ptr<Program> tex_prog;
+	std::shared_ptr<Program> prog, texProg, skyProg;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -205,15 +232,58 @@ public:
 	GLuint CylVertexBufferID;
 
 	//shadow stuff
+	vec3 g_light = vec3(5, 10, 5);
 	GLuint depthMapFBO;
-	const GLuint S_WIDTH = 1024, S_HEIGHT = 1024;
+	const GLuint S_WIDTH = 4096, S_HEIGHT = 4096;
 	GLuint depthMap;
+
+	//shadow debug stuff
+	int DEBUG_LIGHT = 0;
+	int GEOM_DEBUG = 1;
+	shared_ptr<Program> DepthProgDebug;
+	shared_ptr<Program> DebugProg;
+
+	//VFC stuff
+	bool CULL = false;
+	bool DEBUG_CULL = false;
+	vec4 Left, Right, Bottom, Top, Near, Far;
+	vec4 planes[6];
 
 	// bool FirstTime = true;
 
 
 	float cTheta = 0;
 	bool mouseDown = false;
+
+	unsigned int loadCubemap(vector<std::string> faces)
+	{
+		unsigned int textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+		int width, height, nrChannels;
+		for (unsigned int i = 0; i < faces.size(); i++)
+		{
+			unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 3);
+			if (data)
+			{
+				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+				stbi_image_free(data);
+			}
+			else
+			{
+				std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+				stbi_image_free(data);
+			}
+		}
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		return textureID;
+	}
 
     // See if player will hit object if they move
 	bool ComputePlayerHitObjects(vec3 NewCenter){
@@ -272,6 +342,21 @@ public:
 		{
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
+
+		//shadow debug stuff
+		if (key == GLFW_KEY_L && action == GLFW_PRESS){
+			DEBUG_LIGHT = !DEBUG_LIGHT;
+		}
+
+		//VFC on/off
+		if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+			CULL = !CULL;
+		}
+		//VFC DEBUG MINIMAPS
+		if (key == GLFW_KEY_O && action == GLFW_PRESS) {
+			DEBUG_CULL = !DEBUG_CULL;
+		}
+
 		//Keys to control the camera movement
 		if (!camUpdate && !isOverheadView && (possessedActor == NULL))
 		{
@@ -517,6 +602,45 @@ public:
 	}
 
 
+	void BulletHitTest(vector<shared_ptr<GameObject> > &HitObjects, int teamNum){
+        //Loop to see what the closest object hit was
+        float minDistance = 1000000.0f;
+        float minDistanceIndex = -1;
+
+        for (int i = 0; i < HitObjects.size(); i++) {
+            float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
+            if (currDistance < minDistance) {
+                minDistance = currDistance;
+                minDistanceIndex = i;
+            }
+        }
+
+        if (HitObjects.size() != 0) {
+
+            //Set Object Bullet hit for rendering collision
+            hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
+            bulletStartPos = possessedActor->position;
+            didHitObject = true;
+
+            if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
+                HitObjects[minDistanceIndex]->health -= 1.0f;
+                if (HitObjects[minDistanceIndex]->health == 0.0f) {
+                    HitObjects[minDistanceIndex]->beenShot = true;
+                    if(teamNum == 1){
+                        numAlienUnits--;
+                    }
+                    else{
+                        numRobotUnits--;
+                    }
+                }
+            }
+        }
+        else {
+            bulletStartPos = possessedActor->position;
+        }
+	}
+
+
 	void rayTraceOperations(vec3 ray_wor, vector<shared_ptr<GameObject> > &TeamArray, vector<shared_ptr<GameObject> > &UsedArray, int teamNum) {
 		if (possessedActor == NULL) {
 			for (int i = 0; i < TeamArray.size(); i++) {
@@ -526,7 +650,7 @@ public:
 
 				bool isClicked = RayTraceCamera(ray_wor, TeamArray[i]);
 
-				if (isClicked && possessedActor == NULL && isOverheadView) {
+				if (isClicked && possessedActor == NULL && isOverheadView && TeamArray[i]->health > 0) {
 
 					// Check if unit has been used (check if not empty first)
 					if (!UsedArray.empty()) {
@@ -535,6 +659,7 @@ public:
 							possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
 							UsedArray.push_back(TeamArray[i]);
 							TeamArray[i]->isUsed = true;
+                            SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
 						}
 					}
 					// Add first unit to array
@@ -543,20 +668,41 @@ public:
 						possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
 						UsedArray.push_back(TeamArray[i]);
 						TeamArray[i]->isUsed = true;
+                        SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+					}
+
+					//Turn off cursor and starts interpolate of possesed unit
+					isCaptureCursor = !isCaptureCursor;
+					if (isOverheadView && (possessedActor != NULL))
+					{
+						camUpdate = true;
+					}
+					else
+					{
+						isOverheadView = true;
+						firstPersonUI.setRender(false);
+						overViewUI.setRender(true);
 					}
 
 				}
 
 			}
+
+
+
 		}
 
 		//Only run weapon loop if possessed actor exists
 		else if (possessedActor != NULL) {
 
-			vector<shared_ptr<GameObject> > HitObjects;
-
 			//if weapon is shotgun
 			if (possessedActor->currWeapon == 1) {
+
+                vector<shared_ptr<GameObject> > HitObjects1;
+                vector<shared_ptr<GameObject> > HitObjects2;
+                vector<shared_ptr<GameObject> > HitObjects3;
+                vector<shared_ptr<GameObject> > HitObjects4;
+                vector<shared_ptr<GameObject> > HitObjects5;
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -593,16 +739,48 @@ public:
 
 				//Check ray collisions with all game objects
 				for (int i = 0; i < AllGameObjects.size(); i++) {
-					bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+					//bool isClicked1 = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+					bool isClicked1 = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
+                    bool isClicked2 = possessedActor->FirePistol(ray_left, AllGameObjects[i], curCamCenter);
+                    bool isClicked3 = possessedActor->FirePistol(ray_right, AllGameObjects[i], curCamCenter);
+                    bool isClicked4 = possessedActor->FirePistol(ray_down, AllGameObjects[i], curCamCenter);
+                    bool isClicked5 = possessedActor->FirePistol(ray_up, AllGameObjects[i], curCamCenter);
 
-					if (isClicked) {
+
+					if (isClicked1 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
 						//If ray hit object add to vector of hit objects
-						HitObjects.push_back(AllGameObjects[i]);
+						HitObjects1.push_back(AllGameObjects[i]);
 					}
+                    if (isClicked2 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects2.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked3 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects3.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked4 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects4.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked5 && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects5.push_back(AllGameObjects[i]);
+                    }
 				}
+
+                BulletHitTest(HitObjects1, teamNum);
+                BulletHitTest(HitObjects2, teamNum);
+                BulletHitTest(HitObjects3, teamNum);
+                BulletHitTest(HitObjects4, teamNum);
+                BulletHitTest(HitObjects5, teamNum);
+
+                SoundEngine->play2D("../resources/shotgun.mp3", GL_FALSE);
 
 			}
 			else if (possessedActor->currWeapon == 0) {
+
+                vector<shared_ptr<GameObject> > HitObjects;
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -621,43 +799,16 @@ public:
 				for (int i = 0; i < AllGameObjects.size(); i++) {
 					bool isClicked = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
 
-					if (isClicked) {
+					if (isClicked && (AllGameObjects[i]->team == 0 || AllGameObjects[i]->health > 0)) {
 						//If ray hit object add to vector of hit objects
 						HitObjects.push_back(AllGameObjects[i]);
 					}
 				}
 
-			}
+				BulletHitTest(HitObjects, teamNum);
 
-			//Loop to see what the closest object hit was
-			float minDistance = 1000000.0f;
-			float minDistanceIndex = -1;
+                SoundEngine->play2D("../resources/laser.mp3", GL_FALSE);
 
-			for (int i = 0; i < HitObjects.size(); i++) {
-				float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
-				if (currDistance < minDistance) {
-					minDistance = currDistance;
-					minDistanceIndex = i;
-				}
-			}
-
-			if (HitObjects.size() != 0) {
-
-				//Set Object Bullet hit for rendering collision
-				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
-				bulletStartPos = possessedActor->position;
-				didHitObject = true;
-
-				if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
-					HitObjects[minDistanceIndex]->health -= 1.0f;
-					if (HitObjects[minDistanceIndex]->health <= 0.0f) {
-						HitObjects[minDistanceIndex]->beenShot = true;
-						numAlienUnits--;
-					}
-				}
-			}
-			else {
-				bulletStartPos = possessedActor->position;
 			}
 
 		}
@@ -742,25 +893,25 @@ public:
 			glUniform1f(shader->getUniform("shine"), 120.0);
 			break;
 		case 1: // flat grey
-			glUniform3f(shader->getUniform("MatAmb"), 0.13, 0.13, 0.14);
+			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.4, 0.4);
 			glUniform3f(shader->getUniform("MatDif"), 0.3, 0.3, 0.4);
-			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.3, 0.4);
-			glUniform1f(shader->getUniform("shine"), 4.0);
+			glUniform3f(shader->getUniform("MatSpec"), 0.6, 0.6, 0.6);
+			glUniform1f(shader->getUniform("shine"), 70.0);
 			break;
 		case 2: // brass
-			glUniform3f(shader->getUniform("MatAmb"), 0.3294, 0.2235, 0.02745);
+			glUniform3f(shader->getUniform("MatAmb"), 0.6, 0.4, 0.1);
 			glUniform3f(shader->getUniform("MatDif"), 0.7804, 0.5686, 0.11373);
 			glUniform3f(shader->getUniform("MatSpec"), 0.9922, 0.941176, 0.80784);
 			glUniform1f(shader->getUniform("shine"), 27.9);
 			break;
 		case 3: //Mine: red
-			glUniform3f(shader->getUniform("MatAmb"), 0.15, 0.17, 0.12);
+			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.83, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
 			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		case 4: //Mine: green
-			glUniform3f(shader->getUniform("MatAmb"), 0.15, 0.17, 0.12);
+			glUniform3f(shader->getUniform("MatAmb"), 0.2, 0.4, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.13, 0.8, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
 			glUniform1f(shader->getUniform("shine"), 20.0);
@@ -772,6 +923,83 @@ public:
 			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		}
+	}
+
+	void initSky(const std::string& resourceDirectory) {
+		skyProg = make_shared<Program>();
+		skyProg->setVerbose(true);
+		skyProg->setShaderNames(
+			resourceDirectory + "/sky_vert.glsl",
+			resourceDirectory + "/sky_frag.glsl");
+		if (!skyProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		skyProg->addUniform("P");
+		skyProg->addUniform("V");
+		skyProg->addUniform("M");
+		skyProg->addUniform("gCubemapTexture");
+		skyProg->addAttribute("vertPos");
+		skyProg->addAttribute("vertTex");
+
+		float skyboxVertices[] = {
+			// positions          
+			-1.0f,  1.0f, -1.0f,
+			-1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+			1.0f,  1.0f, -1.0f,
+			-1.0f,  1.0f, -1.0f,
+
+			-1.0f, -1.0f,  1.0f,
+			-1.0f, -1.0f, -1.0f,
+			-1.0f,  1.0f, -1.0f,
+			-1.0f,  1.0f, -1.0f,
+			-1.0f,  1.0f,  1.0f,
+			-1.0f, -1.0f,  1.0f,
+
+			1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+
+			-1.0f, -1.0f,  1.0f,
+			-1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f, -1.0f,  1.0f,
+			-1.0f, -1.0f,  1.0f,
+
+			-1.0f,  1.0f, -1.0f,
+			1.0f,  1.0f, -1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			-1.0f,  1.0f,  1.0f,
+			-1.0f,  1.0f, -1.0f,
+
+			-1.0f, -1.0f, -1.0f,
+			-1.0f, -1.0f,  1.0f,
+			1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+			-1.0f, -1.0f,  1.0f,
+			1.0f, -1.0f,  1.0f
+		};
+
+		// skybox VAO
+		glGenVertexArrays(1, &skyboxVAO);
+		glGenBuffers(1, &skyboxVBO);
+		glBindVertexArray(skyboxVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		glBindVertexArray(0);
+
+		cubemapTexture = loadCubemap(faces);
 	}
 
 	void init(const std::string& resourceDirectory)
@@ -832,6 +1060,41 @@ public:
 		progTerrain->addAttribute("vertNor");
 		progTerrain->addAttribute("vertTex");
 		progTerrain->addUniform("lightSource"); //lighting uniform
+
+		//shadow debug stuff
+		DepthProgDebug = make_shared<Program>();
+		DepthProgDebug->setVerbose(true);
+		DepthProgDebug->setShaderNames(resourceDirectory + "/depth_vertDebug.glsl", resourceDirectory + "/depth_fragDebug.glsl");
+		if (!DepthProgDebug->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		DepthProgDebug->addUniform("LP");
+		DepthProgDebug->addUniform("LV");
+		DepthProgDebug->addUniform("P");
+		DepthProgDebug->addUniform("M");
+		DepthProgDebug->addUniform("V");
+		DepthProgDebug->addUniform("eye");
+		DepthProgDebug->addUniform("lightSource");
+		DepthProgDebug->addAttribute("vertPos");
+		//un-needed, but easier then modifying shape
+		DepthProgDebug->addAttribute("vertNor");
+		DepthProgDebug->addAttribute("vertTex");
+
+		//shadow debug stuff
+		DebugProg = make_shared<Program>();
+		DebugProg->setVerbose(true);
+		DebugProg->setShaderNames(resourceDirectory + "/pass_vert.glsl", resourceDirectory + "/pass_texfrag.glsl");
+		if (!DebugProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		DebugProg->addUniform("texBuf");
+		DebugProg->addAttribute("vertPos");
 
 		//shadow stuff
 		DepthProg = make_shared<Program>();
@@ -913,6 +1176,7 @@ public:
 		//create another FBO so we can swap back and forth
 		createFBO(frameBuf[1], texBuf[1]);
 		//this one doesn't need depth
+		initSky(resourceDirectory);
 	}
 	
 	void initPlayerBbox()
@@ -1055,26 +1319,32 @@ public:
 
 		roboBody = make_shared<Shape>();
 		roboBody->loadMesh(resourceDirectory + "/robo_body.obj");
+		roboBody->resize();
 		roboBody->init();
 
 		roboRarm = make_shared<Shape>();
 		roboRarm->loadMesh(resourceDirectory + "/robo_rarm.obj");
+		roboRarm->resize();
 		roboRarm->init();
 
 		roboLarm = make_shared<Shape>();
 		roboLarm->loadMesh(resourceDirectory + "/robo_larm.obj");
+		roboLarm->resize();
 		roboLarm->init();
 
 		roboRleg = make_shared<Shape>();
 		roboRleg->loadMesh(resourceDirectory + "/robo_rleg.obj");
+		roboRleg->resize();
 		roboRleg->init();
 
 		roboLleg = make_shared<Shape>();
 		roboLleg->loadMesh(resourceDirectory + "/robo_lleg.obj");
+		roboLleg->resize();
 		roboLleg->init();
 
 		roboHead = make_shared<Shape>();
 		roboHead->loadMesh(resourceDirectory + "/robo_head.obj");
+		roboHead->resize();
 		roboHead->init();
 
 		// Initialize the cube OBJ model
@@ -1209,6 +1479,19 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
+		str = resourceDirectory + "/images/white.bmp";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 3);
+		glGenTextures(1, &Tex_White);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_White);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
 
 		//---  Load the image of the map file
 		str = resourceDirectory + "/images/Map1.bmp";
@@ -1221,8 +1504,12 @@ public:
 		float tileScale = 2.0f;
 		shared_ptr<GameObject> terrainTemp;
 		float verticalOffset = (height * tileScale)/2.0f, horizontalOffset = (width * tileScale)/2.0f;
+
 		for (int i = 0; i < width; i++)
 		{
+            vector<shared_ptr<GameObject> > tempHeightVector(height);
+            UniformStructure.push_back(tempHeightVector);
+
 			for (int j = 0; j < height; j++)
 			{
 				int red = getColor(dataLayout, width, i, j, 0);
@@ -1238,6 +1525,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
@@ -1247,6 +1537,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
@@ -1256,6 +1549,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green add a shotgun
 				{
@@ -1272,6 +1568,9 @@ public:
 					shared_ptr<Weapon> shotty = make_shared<Weapon>("shotbun", shotgun, "../resources/", prog, position, tileOrientation, true, 2, false, 1);
 					weapons.push_back(shotty);
 
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
+
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -1287,6 +1586,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 0)) // If the color is red boundry tile
 				{
@@ -1318,6 +1620,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				
 			}
@@ -1450,6 +1755,137 @@ public:
 		}
 	}
 
+	//VFC stuff
+	mat4 SetView(shared_ptr<Program> curShade) {
+		mat4 Cam = lookAt(curCamEye, curCamCenter, vec3(0, 1, 0));
+		glUniformMatrix4fv(curShade->getUniform("V"), 1, GL_FALSE, value_ptr(Cam));
+		return Cam;
+	}
+
+	//VFC stuff
+	void ExtractVFPlanes(mat4 P, mat4 V) {
+
+		/* composite matrix */
+		mat4 comp = P * V;
+		vec3 n; //use to pull out normal
+		float l; //length of normal for plane normalization
+
+		Left.x = comp[0][3] + comp[0][0]; // see handout to fill in with values from comp
+		Left.y = comp[1][3] + comp[1][0]; // see handout to fill in with values from comp
+		Left.z = comp[2][3] + comp[2][0]; // see handout to fill in with values from comp
+		Left.w = comp[3][3] + comp[3][0]; // see handout to fill in with values from comp
+
+										  //normalize
+		Left = Left / length(vec3(Left));
+
+		planes[0] = Left;
+		//cout << "Left' " << Left.x << " " << Left.y << " " <<Left.z << " " << Left.w << endl;
+
+		Right.x = comp[0][3] - comp[0][0]; // see handout to fill in with values from comp
+		Right.y = comp[1][3] - comp[1][0]; // see handout to fill in with values from comp
+		Right.z = comp[2][3] - comp[2][0]; // see handout to fill in with values from comp
+		Right.w = comp[3][3] - comp[3][0]; // see handout to fill in with values from comp
+
+										   //normalize
+		Right = Right / length(vec3(Right));
+
+		planes[1] = Right;
+		//cout << "Right " << Right.x << " " << Right.y << " " <<Right.z << " " << Right.w << endl;
+
+		Bottom.x = comp[0][3] + comp[0][1]; // see handout to fill in with values from comp
+		Bottom.y = comp[1][3] + comp[1][1]; // see handout to fill in with values from comp
+		Bottom.z = comp[2][3] + comp[2][1]; // see handout to fill in with values from comp
+		Bottom.w = comp[3][3] + comp[3][1]; // see handout to fill in with values from comp
+
+											//normalize
+		Bottom = Bottom / length(vec3(Bottom));
+
+		planes[2] = Bottom;
+		//cout << "Bottom " << Bottom.x << " " << Bottom.y << " " <<Bottom.z << " " << Bottom.w << endl;
+
+		Top.x = comp[0][3] - comp[0][1]; // see handout to fill in with values from comp
+		Top.y = comp[1][3] - comp[1][1]; // see handout to fill in with values from comp
+		Top.z = comp[2][3] - comp[2][1]; // see handout to fill in with values from comp
+		Top.w = comp[3][3] - comp[3][1]; // see handout to fill in with values from comp
+
+										 //normalize
+		Top = Top / length(vec3(Top));
+
+		planes[3] = Top;
+		//cout << "Top " << Top.x << " " << Top.y << " " <<Top.z << " " << Top.w << endl;
+
+		Near.x = comp[0][3] + comp[0][2]; // see handout to fill in with values from comp
+		Near.y = comp[1][3] + comp[1][2]; // see handout to fill in with values from comp
+		Near.z = comp[2][3] + comp[2][2]; // see handout to fill in with values from comp
+		Near.w = comp[3][3] + comp[3][2]; // see handout to fill in with values from comp
+
+										  //normalize
+		Near = Near / length(vec3(Near));
+
+		planes[4] = Near;
+		//cout << "Near " << Near.x << " " << Near.y << " " <<Near.z << " " << Near.w << endl;
+
+		Far.x = comp[0][3] - comp[0][2]; // see handout to fill in with values from comp
+		Far.y = comp[1][3] - comp[1][2]; // see handout to fill in with values from comp
+		Far.z = comp[2][3] - comp[2][2]; // see handout to fill in with values from comp
+		Far.w = comp[3][3] - comp[3][2]; // see handout to fill in with values from comp
+
+										 //normalize
+		Far = Far / length(vec3(Far));
+
+		Far = Far / l;
+
+		planes[5] = Far;
+		//cout << "Far " << Far.x << " " << Far.y << " " <<Far.z << " " << Far.w << endl;
+	}
+
+	//VFC stuff
+	// helper function to compute distance to the plane
+	float DistToPlane(vec4 plane, vec3 point) {
+		return plane.x * point.x + plane.y * point.y + plane.z * point.z + plane.w;
+	}
+
+	//VFC stuff
+	bool ViewFrustCullTest(vec3 center, float radius) {
+		float dist;
+		if (CULL) {
+			//cout << "testing against all planes" << endl;
+			for (int i = 0; i < 6; i++) {
+				dist = DistToPlane(planes[i], center);
+				//test against each plane
+				if (dist < -radius)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		else {
+			return false;
+		}
+	}
+
+	//VFC stuff
+	void applyVFC(shared_ptr<MatrixStack> &P) {
+		mat4 projection = make_mat4(value_ptr(P->topMatrix()));
+		mat4 view = make_mat4(value_ptr(lookAt(curCamEye, curCamCenter, up)));
+		ExtractVFPlanes(projection, view);
+		//a guess at the radius
+		float radius = 1.75;
+		//sceneActorGameObjs, sceneTerrainObjs, weapons;
+		for (shared_ptr<GameObject> obj : sceneActorGameObjs) {
+			obj->isCulled = ViewFrustCullTest(obj->position, radius);
+		}
+
+		for (shared_ptr<GameObject> obj : sceneTerrainObjs) {
+			obj->isCulled = ViewFrustCullTest(obj->position, radius);
+		}
+
+		for (shared_ptr<GameObject> obj : weapons) {
+			obj->isCulled = ViewFrustCullTest(obj->position, radius);
+		}
+	}
+
 	void renderGroundPlane(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView)
 	{
 		//vec3 camLoc;
@@ -1468,7 +1904,7 @@ public:
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 		glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-		glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+		glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 		//glUniform3f(prog->getUniform("pCamEye"), 0, 10, 0);
 		//Set up the Lighting Uniforms, Copper for this
 		SetMaterial(3, prog);
@@ -1478,7 +1914,6 @@ public:
 		M->popMatrix();
 
 		prog->unbind();
-		std::cout << "Ground plane unbind" << std::endl;
 
 		return;
 	}
@@ -1502,7 +1937,8 @@ public:
 
 	//shadow stuff
 	mat4 SetOrthoMatrix(shared_ptr<Program> curShade) {
-		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 30.0f);
+		mat4 ortho = glm::ortho(-70.0f, 70.0f, -60.0f, 60.0f, -30.0f, 50.0f);
+		//mat4 ortho = glm::ortho(20.0f, 40.0f, 15.0f, 40.0f, 1.0f, 40.0f);
 		//fill in the glUniform call to send to the right shader!
 		glUniformMatrix4fv(curShade->getUniform("LP"), 1, GL_FALSE, value_ptr(ortho));
 		return ortho;
@@ -1517,18 +1953,23 @@ public:
 	}
 
 	//shadow stuff
-	void SetProjectionMatrix(shared_ptr<Program> curShade) {
+	mat4 SetProjectionMatrix(shared_ptr<Program> curShade) {
 		int width, height;
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 		float aspect = width / (float)height;
 		mat4 Projection = perspective(radians(50.0f), aspect, 0.1f, 100.0f);
 		glUniformMatrix4fv(curShade->getUniform("P"), 1, GL_FALSE, value_ptr(Projection));
+		return Projection;
 	}
 
 	//shadow stuff
 	void renderShadows(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P) {
 		mat4 LS;
-		vec3 g_light = vec3(0, 10, 0);
+
+		//set View Matrix
+		auto V = make_shared<MatrixStack>();
+		V->pushMatrix();
+		V->lookAt(curCamEye, curCamCenter, up);
 
 		// Get current frame buffer size.
 		int width, height;
@@ -1538,7 +1979,7 @@ public:
 		glViewport(0, 0, S_WIDTH, S_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glCullFace(GL_FRONT);
+		//glCullFace(GL_LEFT);
 		
 		//set up shadow shader
 		//render scene
@@ -1549,16 +1990,13 @@ public:
 
 		LS = LP * LV;
 
-		//ToDo shadow : find way to replace
-		//drawScene(DepthProg, 0, 0);
-		renderSceneActors(M, P, DepthProg, false);
-		renderTerrain(M, P, DepthProg, false);
-		renderWeapons(M, P, DepthProg, false);
+		// Renders for depth test
+		renderSceneActors(M, P, V, DepthProg, false);
+		renderTerrain(M, P, V, DepthProg, false);
+		renderWeapons(M, P, V, DepthProg, false);
 		
 
-
 		DepthProg->unbind();
-		std::cout << "Depth unbind" << std::endl;
 		glCullFace(GL_BACK);
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1568,37 +2006,70 @@ public:
 		// Clear framebuffer.
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		
-		//now render the scene like normal
-		//set up shadow shader
-		ShadowProg->bind();
-		/* also set up light depth map */
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
-		glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
-		//render scene
-		SetProjectionMatrix(ShadowProg);
-		//attemp to set V matrix using our cam setup
-		glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-		glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+		if (DEBUG_LIGHT) {
+			/* code to draw the light depth buffer */
+			//geometry style debug on light - test transforms, draw geometry from light
+			//perspective
+			if (GEOM_DEBUG) {
+				DepthProgDebug->bind();
+				//render scene from light's point of view
+				mat4 LP = SetOrthoMatrix(DepthProgDebug);
+				//mat4 LV = SetLightView(DepthProgDebug, vec3(1,4,1), vec3(0, 0, 0), vec3(0, 1, 0));
 
-		//ToDo shadow : find way to replace
-		//drawScene(ShadowProg, ShadowProg->getUniform("Texture0"), 1);
-		//set up to render to buffer
-		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
-		// Clear framebuffer.
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		renderSceneActors(M, P, ShadowProg, true);
-		renderWeapons(M, P, ShadowProg, true);
-		renderTerrain(M, P, ShadowProg, true);
-		// render all the actors in the scene
-		// Render all objs in the terrain
-		
+				mat4 LV = SetLightView(DepthProgDebug, g_light, vec3(0, 0, 0), vec3(0, 1, 0));
 
-		ShadowProg->unbind();
-		std::cout << "Shadow unbind" << std::endl;
+				LS = LP * LV;
+
+				//drawScene(DepthProgDebug, ShadowProg->getUniform("Texture0"), 0);
+				renderSceneActors(M, P, V, DepthProgDebug, false);
+				renderTerrain(M, P, V, DepthProgDebug, false);
+				renderWeapons(M, P, V, DepthProgDebug, false);
+
+				DepthProgDebug->unbind();
+			}
+			else {
+				//actually draw the light depth map
+				DebugProg->bind();
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, depthMap);
+				glUniform1i(DebugProg->getUniform("texBuf"), 0);
+				glEnableVertexAttribArray(0);
+				glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+				glDisableVertexAttribArray(0);
+				DebugProg->unbind();
+			}
+		}
+		else {
+			//now render the scene like normal
+			//set up shadow shader
+			ShadowProg->bind();
+			/* also set up light depth map */
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
+			glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
+			glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
+			//render scene
+			SetProjectionMatrix(ShadowProg);
+			//attemp to set V matrix using our cam setup
+			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+
+			// Actually render the models with shadows cast on them
+			renderSceneActors(M, P, V, ShadowProg, true);
+			renderWeapons(M, P, V, ShadowProg, true);
+			SetMaterial(1, ShadowProg);
+			renderTerrain(M, P, V, ShadowProg, true);
+			// render all the actors in the scene
+			// Render all objs in the terrain
+
+
+			ShadowProg->unbind();
+		}
 		
+		//render SkyBox
+		renderSkybox(P, M);
 	}
 
 
@@ -1625,7 +2096,7 @@ public:
 				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
 
-				glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 
 				bullets[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 
@@ -1681,14 +2152,14 @@ public:
 
 	}
 
-	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &V, shared_ptr<Program> shader, bool TexOn)
 	{	
 		//shader bind by caller
 		//shader->bind(); // Bind the passed in Shader
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
 
 
-			if(sceneActorGameObjs[i]->isRender == true){
+			if(sceneActorGameObjs[i]->isRender == true  && (!sceneActorGameObjs[i]->isCulled || !TexOn)){
 				M->pushMatrix();
 				M->loadIdentity();
 
@@ -1721,72 +2192,200 @@ public:
 					SetMaterial(1, shader);
 				}
 
-				// Only draw units that aren't dead
+				// Draw the idle animation for robots that aren't dead
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-					glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
 
 
-					// Draw the hiearchical Model
-
+					//---  Draw the hiearchical Model
 					// Body
-					//M->pushMatrix();
-					//glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					//roboBody->draw(shader);
+					M->pushMatrix();
+					M->translate(vec3(0.0f, -0.2f, 0.0f));
+					M->scale(0.425f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboBody->draw(shader);
 
-					//// Head
-					//M->pushMatrix();
+					// Head
+					M->pushMatrix();
+					// M->loadIdentity();
+					M->translate(vec3(0.0f, 2.0f, 0.0f));
+					M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboHead->draw(shader);
+					M->popMatrix();
+					
+					// Left Arm
+					M->pushMatrix();
+					M->translate(vec3(1.0f, 1.0f, 0.5f));
+					M->scale(2.0f);
+					M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLarm->draw(shader);
+					M->popMatrix();
+
+					// Right Arm
+					M->pushMatrix();
+					M->translate(vec3(-1.0f, -0.2f, 0.2f));
+					M->scale(1.0f);
+					M->rotate(-headRot, vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRarm->draw(shader);
+					M->popMatrix();
+
+					// Right Leg
+					M->pushMatrix();
+					M->translate(vec3(-0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRleg->draw(shader);
+					M->popMatrix();
+
+					// Left Leg
+					M->pushMatrix();
+					M->translate(vec3(0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLleg->draw(shader);
+					M->popMatrix();
+					
+					shader->unbind();
+
+					// ---- Draw UI elements above the player
+					// Bind a white texture
+					prog->bind();
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_White);
+					SetMaterial(5, prog);
+					for (float j = 0.0f; j < sceneActorGameObjs[i]->health; j += 1.0f)
+					{ 
+						M->pushMatrix();
+						M->translate(vec3(-1.0f + ( 2 * j ), 4.5f, 0.0f));
+						M->scale(0.5f);
+						glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+						glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+						glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+						glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+						glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+						cube->draw(prog);
+						M->popMatrix();
+					}
+					prog->unbind();
+
+					shader->bind();
+
+					M->popMatrix(); // Pop the Matrix for the whole body
+				}
+				else // Draw and animate dead robots
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
+
+
+					//---  Draw the hiearchical Model
+					// Body
+					M->pushMatrix();
+					M->translate(vec3(0.0f, -0.2f + deathTranslations[i], 0.0f));
+					M->scale(0.425f);
+					M->rotate(deathRots[i], vec3(1.0f, 0.0f, 0.0f));
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboBody->draw(shader);
+
+					// Head
+					M->pushMatrix();
+					// M->loadIdentity();
+					M->translate(vec3(0.0f, 2.0f, 0.0f));
 					//M->rotate(headRot, vec3(1.0f, 0.0f, 0.0f));
-					//glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					//roboHead->draw(shader);
-					//M->popMatrix();
-					//
-					////M->pushMatrix();
-					////glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					//roboLarm->draw(shader);
-					////M->popMatrix();
-					//roboRarm->draw(shader);
-					//roboRleg->draw(shader);
-					//roboLleg->draw(shader);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboHead->draw(shader);
+					M->popMatrix();
 
-					//M->popMatrix();
+					// Left Arm
+					M->pushMatrix();
+					M->translate(vec3(1.0f, 1.0f, 0.5f));
+					M->scale(2.0f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLarm->draw(shader);
+					M->popMatrix();
+
+					// Right Arm
+					M->pushMatrix();
+					M->translate(vec3(-1.0f, -0.2f, 0.2f));
+					M->scale(1.0f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRarm->draw(shader);
+					M->popMatrix();
+
+					// Right Leg
+					M->pushMatrix();
+					M->translate(vec3(-0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboRleg->draw(shader);
+					M->popMatrix();
+
+					// Left Leg
+					M->pushMatrix();
+					M->translate(vec3(0.5f, -1.5f, 0.0f));
+					M->scale(0.6f);
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					roboLleg->draw(shader);
+					M->popMatrix();
+
+
+					M->popMatrix(); // Pop the Matrix for the whole body
+
+					//----- Update Animations for the Dead robots Hierachical Model
+					if (deathRots[i] > -1.7f)
+					{
+						deathRots[i] -= 0.5 * deltaTime;
+					}
+					if (deathTranslations[i] > -0.6)
+					{
+						deathTranslations[i] -= 0.25 * deltaTime;
+					}
+
 				}
 				
 
 				M->popMatrix();
 			}
 			
-		}
+		} // End of render loop
 
-
-		// ----  Update Animations
+		// ----  Update Animations for the living robots Hierachical Model
 		if (headRot > 0.12 || headRot < -0.12) // toggle the bob direction
 		{
 			headBob = !headBob;
 		}
 		if (headBob)
 		{
-			headRot += 0.0015; // use with delta time
+			headRot += 0.15 * deltaTime; // use with delta time
 		}
 		else
 		{
-			headRot -= 0.0015;
+			headRot -= 0.15 * deltaTime;
 		}
 		
-
-		//shader bind by caller
-		//shader->unbind(); // Unbind the passed in Shader
+		
 
 		return;
-
 	}
 
-	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &V, shared_ptr<Program> shader, bool TexOn)
 	{
 		static float rotato = 0.0f;
 		//shader bind by caller
@@ -1794,31 +2393,35 @@ public:
 
 		for (int i = 0; i < weapons.size(); i++)
 		{
-			M->pushMatrix();
-			if (TexOn)
+			if ((!weapons[i]->isCulled || !TexOn))
 			{
-				SetMaterial(2, shader); // Render the weapons as gold
+				M->pushMatrix();
+				if (TexOn)
+				{
+					SetMaterial(2, shader); // Render the weapons as gold
+				}
+
+				weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+				M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
+				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+
+				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+
+				M->popMatrix();
 			}
 			
-			weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
-			
-			M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
-			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
-			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
-			weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
-
-			M->popMatrix();
 		}
 
 		//shader bind by caller
 		//shader->unbind();
 	}
 
-	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &V, shared_ptr<Program> shader, bool TexOn)
 	{
 		//shader bind by caller
 		//shader->bind();
@@ -1826,66 +2429,69 @@ public:
 		
 		for (int i = 0; i < sceneTerrainObjs.size(); i++)
 		{
-			M->pushMatrix();
-			M->loadIdentity();
-
-			// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-			sceneTerrainObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
-
-			// If terrain
-			if (TexOn)
+			if ((!sceneTerrainObjs[i]->isCulled || !TexOn))
 			{
-				if (sceneTerrainObjs[i]->isGroundTile)
+				M->pushMatrix();
+				M->loadIdentity();
+
+				// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
+				sceneTerrainObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+				// If terrain
+				if (TexOn)
 				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
-					//SetMaterial(1);
-					//M->scale(vec3(2.f, 2.f, 2.f));
+					if (sceneTerrainObjs[i]->isGroundTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+						//SetMaterial(1);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isUpperTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+						//SetMaterial(2);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isCoverTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						//SetMaterial(3);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isJumpTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+						//SetMaterial(4);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isUpperCoverTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						//SetMaterial(3);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isBoundingTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+					}
 				}
-				else if (sceneTerrainObjs[i]->isUpperTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Hex);
-					//SetMaterial(2);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isCoverTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-					//SetMaterial(3);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isJumpTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Hex);
-					//SetMaterial(4);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isUpperCoverTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-					//SetMaterial(3);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isBoundingTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-				}
+
+
+				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+
+				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+				M->popMatrix();
 			}
-			
-
-			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
-			glUniform3f(shader->getUniform("lightSource"), 0, 80, 0);
-			sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
-			M->popMatrix();
 		}
 
 		//shader bind by caller
@@ -2022,13 +2628,95 @@ public:
 		}
 	}
 
+    bool GravityCollision2(vec3 futurePosition){
+
+
+        if(possessedActor != NULL) {
+
+            vector<shared_ptr<GameObject> > nearbyBlocks;
+
+            int zSize = UniformStructure.size();
+            int xSize = UniformStructure[0].size();
+
+            int i = (int) (((futurePosition.z * -1.0f) + zSize) / 2.0f);
+            int j = (int) (((futurePosition.x * -1.0f) + xSize) / 2.0f);
+            nearbyBlocks.push_back(UniformStructure[i][j]);
+
+            //Check block to the right
+            if (j + 1 < xSize) {
+                int newJ = j + 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block to the left
+            if (j - 1 >= 0) {
+                int newJ = j - 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block down right
+            if (j + 1 < xSize && i + 1 < zSize) {
+                int newJ = j + 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up right
+            if (j + 1 < xSize && i - 1 >= 0) {
+                int newJ = j + 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up left
+            if (j - 1 >= 0 && i - 1 >= 0) {
+                int newJ = j - 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block down left
+            if (j - 1 >= 0 && i + 1 < zSize) {
+                int newJ = j - 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up
+            if (i - 1 >= 0) {
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+            //Check down block
+            if (i + 1 < zSize) {
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+
+            for(int k = 0; k < nearbyBlocks.size(); k++){
+                bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= nearbyBlocks[k]->bboxCenter.x && nearbyBlocks[k]->bboxCenter.x + nearbyBlocks[k]->bboxSize.x >= futurePosition.x;
+                bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= nearbyBlocks[k]->bboxCenter.y && nearbyBlocks[k]->bboxCenter.y + nearbyBlocks[k]->bboxSize.y >= futurePosition.y;
+                bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= nearbyBlocks[k]->bboxCenter.z && nearbyBlocks[k]->bboxCenter.z + nearbyBlocks[k]->bboxSize.z >= futurePosition.z;
+
+                if(collisionX && collisionY && collisionZ){
+                    return collisionX && collisionY && collisionZ;
+                }
+            }
+            return false;
+
+        }
+
+    }
+
 	void ApplyGravity()
 	{
 		if(possessedActor != NULL)
 		{
 			float NewY = possessedActor->position.y + (velocity * deltaTime);
 			vec3 NewPosition = vec3(possessedActor->position.x, NewY, possessedActor->position.z);
-			if (!GravityGroundCollision(NewPosition)) {
+			if (!GravityCollision2(NewPosition)) {
 				possessedActor->position.y = NewY;
 			}
 			else{
@@ -2131,7 +2819,23 @@ public:
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glDisableVertexAttribArray(0);
 		tex_prog->unbind();
+	}
 
+	void renderSkybox(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M) {
+		skyProg->bind();
+		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+		glUniformMatrix4fv(skyProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+		glUniformMatrix4fv(skyProg->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+		glUniformMatrix4fv(skyProg->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+		// skybox cube
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glUniform1i(skyProg->getUniform("gCubemapTexture"), 0);
+		glBindVertexArray(skyboxVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
+		glDepthFunc(GL_LESS); // set depth function back to default
+		skyProg->unbind();
 	}
 
 	void render()
@@ -2254,10 +2958,7 @@ public:
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		M->pushMatrix(); // Matrix for the Scene
-
-		
-		
+		M->pushMatrix(); // Matrix for the Scene		
 		
 		// renderGroundPlane(M, P, isOverheadView); //draw the ground plane
 
@@ -2276,7 +2977,10 @@ public:
 		M->pushMatrix();
 		//checkAllGameObjects();
 
-		//ToDo shadows: may need to wrap other render calls to get shadows?
+		//calculates if object is culled for all units, terrain, and floating wepons
+		applyVFC(P);
+
+		// renderShadows wrap other render calls so this renders most the world
 		renderShadows(M, P);
 
 		// Render a bullet
@@ -2304,7 +3008,7 @@ public:
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+				glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 				SetMaterial(1, prog); // Flat Grey
 				gun->draw(prog);
 				M->popMatrix();
@@ -2317,12 +3021,12 @@ public:
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(prog->getUniform("lightSource"), 0, 80, 0);
+				glUniform3f(prog->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 				SetMaterial(1, prog); // Flat Grey
 				shotgun->draw(prog);
 				M->popMatrix();
 			}
-			
+
 
 			// Draw the Crosshair
 			M->pushMatrix();
@@ -2351,11 +3055,41 @@ public:
 			M->popMatrix();
 
 			prog->unbind();
-			std::cout << "crosshair unbind" << std::endl;
-			
+
 		}
 
+		//render SkyBox
+		//renderSkybox(P, M);
+
 		renderUI();
+
+		//VFC DEBUG MINIMAP
+		if (DEBUG_CULL) {
+			/* draw the culled scene from a top down camera */
+			glClear(GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 50, 500, 500);
+
+			prog->bind();
+
+			//SetOrthoMatrix(prog);
+			P->pushMatrix();
+			P->ortho(-150.0f, 150.0f, -150.0f, 150.0f, 0.1f, 100.f);
+
+			//SetTopView(prog);
+			auto V = make_shared<MatrixStack>();
+			V->pushMatrix();
+			V->lookAt(vec3(-1, 15, -1), vec3(0, 0, 0), vec3(0, 1, 0));
+
+			//drawScene(prog, CULL);
+			renderSceneActors(M, P, V, prog, true);
+			renderWeapons(M, P, V, prog, true);
+			SetMaterial(1, prog);
+			renderTerrain(M, P, V, prog, true);
+
+			P->popMatrix();
+			prog->unbind();
+
+		}
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
@@ -2416,6 +3150,7 @@ int main(int argc, char **argv)
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
 	application->initUI(windowManager->getHandle());
+	application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE);
 
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
