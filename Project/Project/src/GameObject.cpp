@@ -43,7 +43,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 void GameObject::DrawGameObj(std::shared_ptr<Program> shader)
 {
 	objModel->draw(shader);
-	renderBbox(shader);
+	//renderBbox(shader);
 }
 
 void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up)

@@ -448,34 +448,34 @@ public:
 			    canJump = false;
 			}
 		}
-		else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
-		{
-			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				// Forward
-				oCamEye.x += (camMove.x * overheadMoveSpd);
-				oCamEye.z += (camMove.z * overheadMoveSpd);
+		//else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
+		//{
+		//	if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		// Forward
+		//		oCamEye.x += (camMove.x * overheadMoveSpd);
+		//		oCamEye.z += (camMove.z * overheadMoveSpd);
 
-			}
-			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				// Left
-				oCamEye += cross(up, camMove) * overheadMoveSpd;
+		//	}
+		//	else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		// Left
+		//		oCamEye += cross(up, camMove) * overheadMoveSpd;
 
-			}
-			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				//Right
-				oCamEye -= cross(up, camMove) * overheadMoveSpd;
+		//	}
+		//	else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		//Right
+		//		oCamEye -= cross(up, camMove) * overheadMoveSpd;
 
-			}
-			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
-			{
-				// Backwards
-				oCamEye.x -= (camMove.x * overheadMoveSpd);
-				oCamEye.z -= (camMove.z * overheadMoveSpd);
-			}
-		}
+		//	}
+		//	else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+		//	{
+		//		// Backwards
+		//		oCamEye.x -= (camMove.x * overheadMoveSpd);
+		//		oCamEye.z -= (camMove.z * overheadMoveSpd);
+		//	}
+		//}
 
 		//--- Keys that act the same regardless of the camera's view
 		if (key == GLFW_KEY_V && action == GLFW_PRESS) // Change Camera View
@@ -1343,44 +1343,44 @@ public:
 
 		// ----- Load the models for the idle animation
 		// Robot Default pose
-		string err;
-		bool fbool;
-		fbool = false;
-		fbool = tinyobj::LoadObj(robotDefault, robotDefaultMat, err, "../resources/robot0.obj");
-		if (robotDefault.size() <= 0) {
-			cout << "robotDefault size < 0";
-			return;
-		}
-		glGenBuffers(1, &buffRobotDefault);
-		glBindBuffer(GL_ARRAY_BUFFER, buffRobotDefault);
-		glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.positions.size() * sizeof(float), &robotDefault[0].mesh.positions[0], GL_DYNAMIC_DRAW);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
-		//Bind Default FaceNorms
-		glGenBuffers(1, &buffRobotNormDefault);
-		glBindBuffer(GL_ARRAY_BUFFER, buffRobotNormDefault);
-		glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.normals.size() * sizeof(float), &robotDefault[0].mesh.normals[0], GL_STATIC_DRAW);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
+		//string err;
+		//bool fbool;
+		//fbool = false;
+		//fbool = tinyobj::LoadObj(robotDefault, robotDefaultMat, err, "../resources/robot0.obj");
+		//if (robotDefault.size() <= 0) {
+		//	cout << "robotDefault size < 0";
+		//	return;
+		//}
+		//glGenBuffers(1, &buffRobotDefault);
+		//glBindBuffer(GL_ARRAY_BUFFER, buffRobotDefault);
+		//glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.positions.size() * sizeof(float), &robotDefault[0].mesh.positions[0], GL_DYNAMIC_DRAW);
+		//glEnableVertexAttribArray(0);
+		//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
+		////Bind Default FaceNorms
+		//glGenBuffers(1, &buffRobotNormDefault);
+		//glBindBuffer(GL_ARRAY_BUFFER, buffRobotNormDefault);
+		//glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.normals.size() * sizeof(float), &robotDefault[0].mesh.normals[0], GL_STATIC_DRAW);
+		//glEnableVertexAttribArray(1);
+		//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
 
-		// Robots Pose 2
-		fbool = false;
-		fbool = tinyobj::LoadObj(robot1, robot1Mat, err, "../resources/robot0.obj");
-		if (robot1.size() <= 0) {
-			cout << "robot1 size < 0";
-			return;
-		}
-		glGenBuffers(1, &buffRobot1);
-		glBindBuffer(GL_ARRAY_BUFFER, buffRobot1);
-		glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.positions.size() * sizeof(float), &robot1[0].mesh.positions[0], GL_DYNAMIC_DRAW);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
-		//Bind Default FaceNorms
-		glGenBuffers(1, &buffRobot1Norm);
-		glBindBuffer(GL_ARRAY_BUFFER, buffRobot1Norm);
-		glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.normals.size() * sizeof(float), &robot1[0].mesh.normals[0], GL_STATIC_DRAW);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
+		//// Robots Pose 2
+		//fbool = false;
+		//fbool = tinyobj::LoadObj(robot1, robot1Mat, err, "../resources/robot0.obj");
+		//if (robot1.size() <= 0) {
+		//	cout << "robot1 size < 0";
+		//	return;
+		//}
+		//glGenBuffers(1, &buffRobot1);
+		//glBindBuffer(GL_ARRAY_BUFFER, buffRobot1);
+		//glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.positions.size() * sizeof(float), &robot1[0].mesh.positions[0], GL_DYNAMIC_DRAW);
+		//glEnableVertexAttribArray(0);
+		//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
+		////Bind Default FaceNorms
+		//glGenBuffers(1, &buffRobot1Norm);
+		//glBindBuffer(GL_ARRAY_BUFFER, buffRobot1Norm);
+		//glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.normals.size() * sizeof(float), &robot1[0].mesh.normals[0], GL_STATIC_DRAW);
+		//glEnableVertexAttribArray(1);
+		//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
 
 
 		// Setup player bbox
@@ -1641,7 +1641,7 @@ public:
 		// ---- Setup the team 2 robots ----
 		// Setup the 1st team 2 robot
 		position = vec3(-5.0f, 0.1f, 50.0f);
-		orientation = vec3(0.0f, 0.0f, -1.0f);
+		orientation = vec3(0.0f, 0.0f, 0.0f);
 		shared_ptr<GameObject> alien0 = make_shared<GameObject>("evilRobot0", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien0);
 		alienUnits.push_back(alien0);
@@ -1650,7 +1650,7 @@ public:
 
 		// Setup the 2nd team 2 robot
 		position = vec3(5.0f, 0.1f, 50.0f);
-		orientation = vec3(0.0f, 0.0f, -1.0f);
+		orientation = vec3(0.0f, 0.0f, 0.0f);
 		shared_ptr<GameObject> alien1 = make_shared<GameObject>("evilRobot1", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien1);
 		alienUnits.push_back(alien1);
@@ -1658,7 +1658,7 @@ public:
 
 		// Setup the 3rd team 2 robot
 		position = vec3(-25.0f, 1.1f, 50.0f);
-		orientation = vec3(0.0f, 0.0f, -1.0f);
+		orientation = vec3(0.0f, 0.0f, 0.0f);
 		shared_ptr<GameObject> alien2 = make_shared<GameObject>("evilRobot2", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien2);
 		alienUnits.push_back(alien2);
@@ -1666,7 +1666,7 @@ public:
 
 		// Setup the 4th team 2 robot
 		position = vec3(25.0f, 1.1f, 50.0f);
-		orientation = vec3(0.0f, 0.0f, -1.0f);
+		orientation = vec3(0.0f, 0.0f, 0.0f);
 		shared_ptr<GameObject> alien3 = make_shared<GameObject>("evilRobot3", maRobotShape, "../resources/", prog, position, orientation, true, 2, false);
 		sceneActorGameObjs.push_back(alien3);
 		alienUnits.push_back(alien3);
@@ -2181,6 +2181,10 @@ public:
 					M->pushMatrix();
 					M->translate(vec3(0.0f, -0.2f, 0.0f));
 					M->scale(0.425f);
+					if (sceneActorGameObjs[i]->team == 2)
+					{
+						M->rotate(-60.0f, vec3(0.0f, 1.0f, 0.0f) );
+					}
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					roboBody->draw(shader);
 
