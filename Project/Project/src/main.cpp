@@ -594,6 +594,19 @@ public:
 						TeamArray[i]->isUsed = true;
 					}
 
+					//Turn off cursor and starts interpolate of possesed unit
+					isCaptureCursor = !isCaptureCursor;
+					if (isOverheadView && (possessedActor != NULL))
+					{
+						camUpdate = true;
+					}
+					else
+					{
+						isOverheadView = true;
+						firstPersonUI.setRender(false);
+						overViewUI.setRender(true);
+					}
+
 				}
 
 			}
