@@ -1156,6 +1156,7 @@ public:
 		tex_prog->init();
 		tex_prog->addUniform("texBuf");
 		tex_prog->addAttribute("vertPos");
+		tex_prog->addUniform("t");
 		tex_prog->addUniform("mode");
 
 		//create two frame buffer objects to toggle between
@@ -1197,7 +1198,7 @@ public:
 		glBindBuffer(GL_ARRAY_BUFFER, p1_vbo_vertices);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(p1_vertices), p1_vertices, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind
-		
+
 		GLushort p1_elements[] = {
 		  0, 1, 2, 3,
 		  4, 5, 6, 7,
@@ -2806,6 +2807,7 @@ public:
 
 		// example applying of 'drawing' the FBO texture
 		tex_prog->bind();
+		glUniform1f(tex_prog->getUniform("t"), glfwGetTime());
 		glUniform1i(tex_prog->getUniform("texBuf"), 0);
 
 		if (possessedBullet != NULL)
