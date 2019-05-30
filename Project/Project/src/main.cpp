@@ -894,6 +894,7 @@ public:
 		tex_prog->addUniform("texBuf");
 		tex_prog->addAttribute("vertPos");
 		tex_prog->addUniform("t");
+		tex_prog->addUniform("mode");
 
 		//create two frame buffer objects to toggle between
 		glGenFramebuffers(2, frameBuf);
@@ -2120,6 +2121,12 @@ public:
 		tex_prog->bind();
 		glUniform1f(tex_prog->getUniform("t"), glfwGetTime());
 		glUniform1i(tex_prog->getUniform("texBuf"), 0);
+
+		if (possessedBullet != NULL)
+			glUniform1i(tex_prog->getUniform("mode"), 1);
+		else 
+			glUniform1i(tex_prog->getUniform("mode"), 0);
+
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
