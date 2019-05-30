@@ -21,6 +21,8 @@
 #include "ourCoreFuncs.h"
 #include "UIController.h"
 #include "Weapon.h"
+#include "irrKlang/include/irrKlang.h"
+#pragma comment(lib, "irrKlang.lib")
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -28,6 +30,7 @@
 
 using namespace std;
 using namespace glm;
+using namespace irrklang;
 
 //------ Globals
 vector<tinyobj::shape_t> robotDefault, robot1;
@@ -184,6 +187,9 @@ public:
 
 	//Uniform spatial subdivison
     vector<vector<shared_ptr<GameObject> > > UniformStructure;
+
+	//Sound Engine
+	ISoundEngine *SoundEngine = createIrrKlangDevice();
 	
 
 	WindowManager * windowManager = nullptr;
@@ -2719,6 +2725,7 @@ int main(int argc, char **argv)
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
 	application->initUI(windowManager->getHandle());
+	application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE);
 
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
