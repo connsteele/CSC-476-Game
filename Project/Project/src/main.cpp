@@ -119,6 +119,23 @@ float orbRotate = 0.0;
 float smallRotate = 0.0;
 float bunnyRotate = 0.0;
 
+//Skybox buffers
+unsigned int skyboxVAO, skyboxVBO;
+
+//Skybox texture
+unsigned int cubemapTexture;
+
+//Skybox image files
+vector<std::string> faces
+{
+	"../resources/sky-right.png",
+	"../resources/sky-left.png",
+	"../resources/sky-top.png",
+	"../resources/sky-bottom.png",
+	"../resources/sky-back.png",
+	"../resources/sky-front.png"
+};
+
 //UI
 UIController mainMenuUI;
 UIController overViewUI;
@@ -169,8 +186,7 @@ public:
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog;
-	std::shared_ptr<Program> texProg;
+	std::shared_ptr<Program> prog, texProg, skyProg;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -218,6 +234,36 @@ public:
 
 	float cTheta = 0;
 	bool mouseDown = false;
+
+	unsigned int loadCubemap(vector<std::string> faces)
+	{
+		unsigned int textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+		int width, height, nrChannels;
+		for (unsigned int i = 0; i < faces.size(); i++)
+		{
+			unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 3);
+			if (data)
+			{
+				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+				stbi_image_free(data);
+			}
+			else
+			{
+				std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+				stbi_image_free(data);
+			}
+		}
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		return textureID;
+	}
 
     // See if player will hit object if they move
 	bool ComputePlayerHitObjects(vec3 NewCenter){
@@ -784,6 +830,83 @@ public:
 		}
 	}
 
+	void initSky(const std::string& resourceDirectory) {
+		skyProg = make_shared<Program>();
+		skyProg->setVerbose(true);
+		skyProg->setShaderNames(
+			resourceDirectory + "/sky_vert.glsl",
+			resourceDirectory + "/sky_frag.glsl");
+		if (!skyProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+
+		skyProg->addUniform("P");
+		skyProg->addUniform("V");
+		skyProg->addUniform("M");
+		skyProg->addUniform("gCubemapTexture");
+		skyProg->addAttribute("vertPos");
+		skyProg->addAttribute("vertTex");
+
+		float skyboxVertices[] = {
+			// positions          
+			-1.0f,  1.0f, -1.0f,
+			-1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+			1.0f,  1.0f, -1.0f,
+			-1.0f,  1.0f, -1.0f,
+
+			-1.0f, -1.0f,  1.0f,
+			-1.0f, -1.0f, -1.0f,
+			-1.0f,  1.0f, -1.0f,
+			-1.0f,  1.0f, -1.0f,
+			-1.0f,  1.0f,  1.0f,
+			-1.0f, -1.0f,  1.0f,
+
+			1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+
+			-1.0f, -1.0f,  1.0f,
+			-1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f, -1.0f,  1.0f,
+			-1.0f, -1.0f,  1.0f,
+
+			-1.0f,  1.0f, -1.0f,
+			1.0f,  1.0f, -1.0f,
+			1.0f,  1.0f,  1.0f,
+			1.0f,  1.0f,  1.0f,
+			-1.0f,  1.0f,  1.0f,
+			-1.0f,  1.0f, -1.0f,
+
+			-1.0f, -1.0f, -1.0f,
+			-1.0f, -1.0f,  1.0f,
+			1.0f, -1.0f, -1.0f,
+			1.0f, -1.0f, -1.0f,
+			-1.0f, -1.0f,  1.0f,
+			1.0f, -1.0f,  1.0f
+		};
+
+		// skybox VAO
+		glGenVertexArrays(1, &skyboxVAO);
+		glGenBuffers(1, &skyboxVBO);
+		glBindVertexArray(skyboxVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		glBindVertexArray(0);
+
+		cubemapTexture = loadCubemap(faces);
+	}
+
 	void init(const std::string& resourceDirectory)
 	{
 		int width, height;
@@ -930,6 +1053,7 @@ public:
 		ShadowProg->addUniform("shine");
 
 		initShadow();
+		initSky(resourceDirectory);
 	}
 	
 	void initPlayerBbox()
@@ -1646,6 +1770,8 @@ public:
 			ShadowProg->unbind();
 		}
 		
+		//render SkyBox
+		renderSkybox(P, M);
 	}
 
 
@@ -2157,6 +2283,23 @@ public:
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 
+	void renderSkybox(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M) {
+		skyProg->bind();
+		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+		glUniformMatrix4fv(skyProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+		glUniformMatrix4fv(skyProg->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+		glUniformMatrix4fv(skyProg->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+		// skybox cube
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glUniform1i(skyProg->getUniform("gCubemapTexture"), 0);
+		glBindVertexArray(skyboxVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0);
+		glDepthFunc(GL_LESS); // set depth function back to default
+		skyProg->unbind();
+	}
+
 	void render()
 	{
 		// Get current frame buffer size.
@@ -2277,10 +2420,7 @@ public:
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		M->pushMatrix(); // Matrix for the Scene
-
-		
-		
+		M->pushMatrix(); // Matrix for the Scene		
 		
 		// renderGroundPlane(M, P, isOverheadView); //draw the ground plane
 
@@ -2345,7 +2485,7 @@ public:
 				shotgun->draw(prog);
 				M->popMatrix();
 			}
-			
+
 
 			// Draw the Crosshair
 			M->pushMatrix();
@@ -2374,8 +2514,11 @@ public:
 			M->popMatrix();
 
 			prog->unbind();
-			
+
 		}
+
+		//render SkyBox
+		//renderSkybox(P, M);
 
 		renderUI();
 
