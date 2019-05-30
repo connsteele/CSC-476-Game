@@ -662,9 +662,14 @@ public:
 						overViewUI.setRender(true);
 					}
 
+                    SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+
 				}
 
 			}
+
+
+
 		}
 
 		//Only run weapon loop if possessed actor exists
@@ -750,6 +755,8 @@ public:
                 BulletHitTest(HitObjects4, teamNum);
                 BulletHitTest(HitObjects5, teamNum);
 
+                SoundEngine->play2D("../resources/shotgun.mp3", GL_FALSE);
+
 			}
 			else if (possessedActor->currWeapon == 0) {
 
@@ -779,6 +786,8 @@ public:
 				}
 
 				BulletHitTest(HitObjects, teamNum);
+
+                SoundEngine->play2D("../resources/laser.mp3", GL_FALSE);
 
 			}
 
