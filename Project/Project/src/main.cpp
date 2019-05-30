@@ -98,7 +98,7 @@ float elapsedTime = 0.0f;
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 1100; // use 11
+int turnLength = 10; // use 11
 
 bool isCaptureCursor = false;
 
@@ -2994,6 +2994,21 @@ public:
 			M->pushMatrix();
 			M->translate(vec3(0.0f, 0.0f, -15.0f));
 			M->scale(vec3(0.1f, 0.5f, 0.1f));
+			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+			glUniform3f(prog->getUniform("lightSource"), 0, 0, 0);
+			cube->draw(prog);
+			M->popMatrix();
+
+			// Draw Turn timer
+			M->pushMatrix();
+			M->translate(vec3(-13.0f, 0.0f, -15.0f));
+			// y value scale from 3.0f to 0.0f
+			float y = ((turnLength - (glfwGetTime() - turnStartTime)) / turnLength) * 3;
+			//max-cur/max * 3  -> 1 - 0 to 3 - 0
+			M->scale(vec3(0.5f, 0.1f, 0.5f));
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 			glUniform3f(prog->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
