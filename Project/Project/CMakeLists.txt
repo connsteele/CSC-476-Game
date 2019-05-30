@@ -79,9 +79,8 @@ if(WIN32)
   target_link_libraries(${CMAKE_PROJECT_NAME} opengl32.lib)
 else()
 
-  link_directories("resources/include/irrKlang/bin/linux-gcc-64")
 
-  target_link_libraries(${CMAKE_PROJECT_NAME} libIrrKlang.so)
+  target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/linux/libIrrKlang.so)
 
   # Enable all pedantic warnings.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -pedantic")
