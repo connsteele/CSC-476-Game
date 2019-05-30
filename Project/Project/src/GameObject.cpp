@@ -28,6 +28,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isStaticGeom = isStaticGeom;
 	this->health = 2.0f;
 	this->isUsed = false;
+	this->isCulled = false;
 
 	this->team = team;
 	this->currWeapon = 0;
