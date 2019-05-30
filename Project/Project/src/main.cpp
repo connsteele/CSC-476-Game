@@ -527,6 +527,45 @@ public:
 	}
 
 
+	void BulletHitTest(vector<shared_ptr<GameObject> > &HitObjects, int teamNum){
+        //Loop to see what the closest object hit was
+        float minDistance = 1000000.0f;
+        float minDistanceIndex = -1;
+
+        for (int i = 0; i < HitObjects.size(); i++) {
+            float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
+            if (currDistance < minDistance) {
+                minDistance = currDistance;
+                minDistanceIndex = i;
+            }
+        }
+
+        if (HitObjects.size() != 0) {
+
+            //Set Object Bullet hit for rendering collision
+            hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
+            bulletStartPos = possessedActor->position;
+            didHitObject = true;
+
+            if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
+                HitObjects[minDistanceIndex]->health -= 1.0f;
+                if (HitObjects[minDistanceIndex]->health <= 0.0f) {
+                    HitObjects[minDistanceIndex]->beenShot = true;
+                    if(teamNum == 1){
+                        numAlienUnits--;
+                    }
+                    else{
+                        numRobotUnits--;
+                    }
+                }
+            }
+        }
+        else {
+            bulletStartPos = possessedActor->position;
+        }
+	}
+
+
 	void rayTraceOperations(vec3 ray_wor, vector<shared_ptr<GameObject> > &TeamArray, vector<shared_ptr<GameObject> > &UsedArray, int teamNum) {
 		if (possessedActor == NULL) {
 			for (int i = 0; i < TeamArray.size(); i++) {
@@ -563,10 +602,14 @@ public:
 		//Only run weapon loop if possessed actor exists
 		else if (possessedActor != NULL) {
 
-			vector<shared_ptr<GameObject> > HitObjects;
-
 			//if weapon is shotgun
 			if (possessedActor->currWeapon == 1) {
+
+                vector<shared_ptr<GameObject> > HitObjects1;
+                vector<shared_ptr<GameObject> > HitObjects2;
+                vector<shared_ptr<GameObject> > HitObjects3;
+                vector<shared_ptr<GameObject> > HitObjects4;
+                vector<shared_ptr<GameObject> > HitObjects5;
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -603,16 +646,46 @@ public:
 
 				//Check ray collisions with all game objects
 				for (int i = 0; i < AllGameObjects.size(); i++) {
-					bool isClicked = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+					//bool isClicked1 = possessedActor->FireShotgun(ray_center, ray_left, ray_right, ray_down, ray_up, AllGameObjects[i], curCamCenter);
+					bool isClicked1 = possessedActor->FirePistol(ray_center, AllGameObjects[i], curCamCenter);
+                    bool isClicked2 = possessedActor->FirePistol(ray_left, AllGameObjects[i], curCamCenter);
+                    bool isClicked3 = possessedActor->FirePistol(ray_right, AllGameObjects[i], curCamCenter);
+                    bool isClicked4 = possessedActor->FirePistol(ray_down, AllGameObjects[i], curCamCenter);
+                    bool isClicked5 = possessedActor->FirePistol(ray_up, AllGameObjects[i], curCamCenter);
 
-					if (isClicked) {
+
+					if (isClicked1) {
 						//If ray hit object add to vector of hit objects
-						HitObjects.push_back(AllGameObjects[i]);
+						HitObjects1.push_back(AllGameObjects[i]);
 					}
+                    if (isClicked2) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects2.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked3) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects3.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked4) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects4.push_back(AllGameObjects[i]);
+                    }
+                    if (isClicked5) {
+                        //If ray hit object add to vector of hit objects
+                        HitObjects5.push_back(AllGameObjects[i]);
+                    }
 				}
+
+                BulletHitTest(HitObjects1, teamNum);
+                BulletHitTest(HitObjects2, teamNum);
+                BulletHitTest(HitObjects3, teamNum);
+                BulletHitTest(HitObjects4, teamNum);
+                BulletHitTest(HitObjects5, teamNum);
 
 			}
 			else if (possessedActor->currWeapon == 0) {
+
+                vector<shared_ptr<GameObject> > HitObjects;
 
 				int width, height;
 				glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -637,37 +710,8 @@ public:
 					}
 				}
 
-			}
+				BulletHitTest(HitObjects, teamNum);
 
-			//Loop to see what the closest object hit was
-			float minDistance = 1000000.0f;
-			float minDistanceIndex = -1;
-
-			for (int i = 0; i < HitObjects.size(); i++) {
-				float currDistance = distance(curCamCenter, HitObjects[i]->bboxCenter);
-				if (currDistance < minDistance) {
-					minDistance = currDistance;
-					minDistanceIndex = i;
-				}
-			}
-
-			if (HitObjects.size() != 0) {
-
-				//Set Object Bullet hit for rendering collision
-				hitObjectDistance = distance(possessedActor->position, HitObjects[minDistanceIndex]->position);
-				bulletStartPos = possessedActor->position;
-				didHitObject = true;
-
-				if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
-					HitObjects[minDistanceIndex]->health -= 1.0f;
-					if (HitObjects[minDistanceIndex]->health <= 0.0f) {
-						HitObjects[minDistanceIndex]->beenShot = true;
-						numAlienUnits--;
-					}
-				}
-			}
-			else {
-				bulletStartPos = possessedActor->position;
 			}
 
 		}
