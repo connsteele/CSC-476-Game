@@ -80,6 +80,8 @@ vector<vec3> coverCubesLocs;
 
 //--- Variables that control hierarchical animation
 float headRot = 0.0f, deathRot = 0.0f, deathTranslation = 0.0f;
+vector<float> deathRots(8, 0.0f);
+vector<float> deathTranslations(8, 0.0f);
 bool headBob = false; // controls what way to bob
 
 
@@ -2060,9 +2062,9 @@ public:
 					//---  Draw the hiearchical Model
 					// Body
 					M->pushMatrix();
-					M->translate(vec3(0.0f, -0.2f + deathTranslation, 0.0f));
+					M->translate(vec3(0.0f, -0.2f + deathTranslations[i], 0.0f));
 					M->scale(0.425f);
-					M->rotate(deathRot, vec3(1.0f, 0.0f, 0.0f));
+					M->rotate(deathRots[i], vec3(1.0f, 0.0f, 0.0f));
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					roboBody->draw(shader);
 
@@ -2111,13 +2113,13 @@ public:
 					M->popMatrix(); // Pop the Matrix for the whole body
 
 					//----- Update Animations for the Dead robots Hierachical Model
-					if (deathRot > -1.7f)
+					if (deathRots[i] > -1.7f)
 					{
-						deathRot -= 0.5 * deltaTime;
+						deathRots[i] -= 0.5 * deltaTime;
 					}
-					if (deathTranslation > -0.6)
+					if (deathTranslations[i] > -0.6)
 					{
-						deathTranslation -= 0.25 * deltaTime;
+						deathTranslations[i] -= 0.25 * deltaTime;
 					}
 
 				}
