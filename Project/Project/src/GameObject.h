@@ -25,7 +25,7 @@ public:
 	glm::vec3 bboxSize;
 	glm::vec3 bboxCenter;
 	glm::mat4 bboxTransform;
-	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot, isGroundTile, isUpperTile, isCoverTile, isJumpTile, isUpperCoverTile, isBoundingTile, isStaticGeom;
+	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot, isGroundTile, isUpperTile, isCoverTile, isJumpTile, isUpperCoverTile, isBoundingTile, isStaticGeom, isCulled;
 	int team; // 0 is neutral, 1 for robots(player team), 2 for aliens
 	int currWeapon; //0 for default weapon, 1 for sphere gun, 2 for shotgun
 	float objVelocity = 0.0f;

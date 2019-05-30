@@ -223,7 +223,7 @@ public:
 	//shadow stuff
 	vec3 g_light = vec3(5, 10, 5);
 	GLuint depthMapFBO;
-	const GLuint S_WIDTH = 16384 / 4, S_HEIGHT = 16384 / 4;
+	const GLuint S_WIDTH = 4096, S_HEIGHT = 4096;
 	GLuint depthMap;
 
 	//shadow debug stuff
@@ -231,6 +231,12 @@ public:
 	int GEOM_DEBUG = 1;
 	shared_ptr<Program> DepthProgDebug;
 	shared_ptr<Program> DebugProg;
+
+	//VFC stuff
+	bool CULL = false;
+	bool DEBUG_CULL = false;
+	vec4 Left, Right, Bottom, Top, Near, Far;
+	vec4 planes[6];
 
 	// bool FirstTime = true;
 
@@ -329,6 +335,15 @@ public:
 		//shadow debug stuff
 		if (key == GLFW_KEY_L && action == GLFW_PRESS){
 			DEBUG_LIGHT = !DEBUG_LIGHT;
+		}
+
+		//VFC on/off
+		if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+			CULL = !CULL;
+		}
+		//VFC DEBUG MINIMAPS
+		if (key == GLFW_KEY_O && action == GLFW_PRESS) {
+			DEBUG_CULL = !DEBUG_CULL;
 		}
 
 		//Keys to control the camera movement
@@ -1681,6 +1696,137 @@ public:
 		}
 	}
 
+	//VFC stuff
+	mat4 SetView(shared_ptr<Program> curShade) {
+		mat4 Cam = lookAt(curCamEye, curCamCenter, vec3(0, 1, 0));
+		glUniformMatrix4fv(curShade->getUniform("V"), 1, GL_FALSE, value_ptr(Cam));
+		return Cam;
+	}
+
+	//VFC stuff
+	void ExtractVFPlanes(mat4 P, mat4 V) {
+
+		/* composite matrix */
+		mat4 comp = P * V;
+		vec3 n; //use to pull out normal
+		float l; //length of normal for plane normalization
+
+		Left.x = comp[0][3] + comp[0][0]; // see handout to fill in with values from comp
+		Left.y = comp[1][3] + comp[1][0]; // see handout to fill in with values from comp
+		Left.z = comp[2][3] + comp[2][0]; // see handout to fill in with values from comp
+		Left.w = comp[3][3] + comp[3][0]; // see handout to fill in with values from comp
+
+										  //normalize
+		Left = Left / length(vec3(Left));
+
+		planes[0] = Left;
+		//cout << "Left' " << Left.x << " " << Left.y << " " <<Left.z << " " << Left.w << endl;
+
+		Right.x = comp[0][3] - comp[0][0]; // see handout to fill in with values from comp
+		Right.y = comp[1][3] - comp[1][0]; // see handout to fill in with values from comp
+		Right.z = comp[2][3] - comp[2][0]; // see handout to fill in with values from comp
+		Right.w = comp[3][3] - comp[3][0]; // see handout to fill in with values from comp
+
+										   //normalize
+		Right = Right / length(vec3(Right));
+
+		planes[1] = Right;
+		//cout << "Right " << Right.x << " " << Right.y << " " <<Right.z << " " << Right.w << endl;
+
+		Bottom.x = comp[0][3] + comp[0][1]; // see handout to fill in with values from comp
+		Bottom.y = comp[1][3] + comp[1][1]; // see handout to fill in with values from comp
+		Bottom.z = comp[2][3] + comp[2][1]; // see handout to fill in with values from comp
+		Bottom.w = comp[3][3] + comp[3][1]; // see handout to fill in with values from comp
+
+											//normalize
+		Bottom = Bottom / length(vec3(Bottom));
+
+		planes[2] = Bottom;
+		//cout << "Bottom " << Bottom.x << " " << Bottom.y << " " <<Bottom.z << " " << Bottom.w << endl;
+
+		Top.x = comp[0][3] - comp[0][1]; // see handout to fill in with values from comp
+		Top.y = comp[1][3] - comp[1][1]; // see handout to fill in with values from comp
+		Top.z = comp[2][3] - comp[2][1]; // see handout to fill in with values from comp
+		Top.w = comp[3][3] - comp[3][1]; // see handout to fill in with values from comp
+
+										 //normalize
+		Top = Top / length(vec3(Top));
+
+		planes[3] = Top;
+		//cout << "Top " << Top.x << " " << Top.y << " " <<Top.z << " " << Top.w << endl;
+
+		Near.x = comp[0][3] + comp[0][2]; // see handout to fill in with values from comp
+		Near.y = comp[1][3] + comp[1][2]; // see handout to fill in with values from comp
+		Near.z = comp[2][3] + comp[2][2]; // see handout to fill in with values from comp
+		Near.w = comp[3][3] + comp[3][2]; // see handout to fill in with values from comp
+
+										  //normalize
+		Near = Near / length(vec3(Near));
+
+		planes[4] = Near;
+		//cout << "Near " << Near.x << " " << Near.y << " " <<Near.z << " " << Near.w << endl;
+
+		Far.x = comp[0][3] - comp[0][2]; // see handout to fill in with values from comp
+		Far.y = comp[1][3] - comp[1][2]; // see handout to fill in with values from comp
+		Far.z = comp[2][3] - comp[2][2]; // see handout to fill in with values from comp
+		Far.w = comp[3][3] - comp[3][2]; // see handout to fill in with values from comp
+
+										 //normalize
+		Far = Far / length(vec3(Far));
+
+		Far = Far / l;
+
+		planes[5] = Far;
+		//cout << "Far " << Far.x << " " << Far.y << " " <<Far.z << " " << Far.w << endl;
+	}
+
+	//VFC stuff
+	// helper function to compute distance to the plane
+	float DistToPlane(vec4 plane, vec3 point) {
+		return plane.x * point.x + plane.y * point.y + plane.z * point.z + plane.w;
+	}
+
+	//VFC stuff
+	bool ViewFrustCullTest(vec3 center, float radius) {
+		float dist;
+		if (CULL) {
+			//cout << "testing against all planes" << endl;
+			for (int i = 0; i < 6; i++) {
+				dist = DistToPlane(planes[i], center);
+				//test against each plane
+				if (dist < -radius)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		else {
+			return false;
+		}
+	}
+
+	//VFC stuff
+	void applyVFC(shared_ptr<MatrixStack> &P) {
+		mat4 projection = make_mat4(value_ptr(P->topMatrix()));
+		mat4 view = make_mat4(value_ptr(lookAt(curCamEye, curCamCenter, up)));
+		ExtractVFPlanes(projection, view);
+		//a guess at the radius
+		float radius = 1.75;
+		//sceneActorGameObjs, sceneTerrainObjs, weapons;
+		for (shared_ptr<GameObject> obj : sceneActorGameObjs) {
+			obj->isCulled = ViewFrustCullTest(obj->position, radius);
+		}
+
+		for (shared_ptr<GameObject> obj : sceneTerrainObjs) {
+			obj->isCulled = ViewFrustCullTest(obj->position, radius);
+		}
+
+		for (shared_ptr<GameObject> obj : weapons) {
+			obj->isCulled = ViewFrustCullTest(obj->position, radius);
+		}
+	}
+
 	void renderGroundPlane(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, bool overheadView)
 	{
 		//vec3 camLoc;
@@ -1761,6 +1907,11 @@ public:
 	void renderShadows(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P) {
 		mat4 LS;
 
+		//set View Matrix
+		auto V = make_shared<MatrixStack>();
+		V->pushMatrix();
+		V->lookAt(curCamEye, curCamCenter, up);
+
 		// Get current frame buffer size.
 		int width, height;
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
@@ -1769,7 +1920,7 @@ public:
 		glViewport(0, 0, S_WIDTH, S_HEIGHT);
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		//glCullFace(GL_FRONT);
+		glCullFace(GL_LEFT);
 		
 		//set up shadow shader
 		//render scene
@@ -1781,9 +1932,9 @@ public:
 		LS = LP * LV;
 
 		// Renders for depth test
-		renderSceneActors(M, P, DepthProg, false);
-		renderTerrain(M, P, DepthProg, false);
-		renderWeapons(M, P, DepthProg, false);
+		renderSceneActors(M, P, V, DepthProg, false);
+		renderTerrain(M, P, V, DepthProg, false);
+		renderWeapons(M, P, V, DepthProg, false);
 		
 
 		DepthProg->unbind();
@@ -1811,9 +1962,9 @@ public:
 				LS = LP * LV;
 
 				//drawScene(DepthProgDebug, ShadowProg->getUniform("Texture0"), 0);
-				renderSceneActors(M, P, DepthProgDebug, false);
-				renderTerrain(M, P, DepthProgDebug, false);
-				renderWeapons(M, P, DepthProgDebug, false);
+				renderSceneActors(M, P, V, DepthProgDebug, false);
+				renderTerrain(M, P, V, DepthProgDebug, false);
+				renderWeapons(M, P, V, DepthProgDebug, false);
 
 				DepthProgDebug->unbind();
 			}
@@ -1843,14 +1994,14 @@ public:
 			//render scene
 			SetProjectionMatrix(ShadowProg);
 			//attemp to set V matrix using our cam setup
-			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
 
 			// Actually render the models with shadows cast on them
-			renderSceneActors(M, P, ShadowProg, true);
-			renderWeapons(M, P, ShadowProg, true);
+			renderSceneActors(M, P, V, ShadowProg, true);
+			renderWeapons(M, P, V, ShadowProg, true);
 			SetMaterial(1, ShadowProg);
-			renderTerrain(M, P, ShadowProg, true);
+			renderTerrain(M, P, V, ShadowProg, true);
 			// render all the actors in the scene
 			// Render all objs in the terrain
 
@@ -1942,14 +2093,14 @@ public:
 
 	}
 
-	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	void renderSceneActors(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &V, shared_ptr<Program> shader, bool TexOn)
 	{	
 		//shader bind by caller
 		//shader->bind(); // Bind the passed in Shader
 		for (int i = 0; i < sceneActorGameObjs.size(); i++) {
 
 
-			if(sceneActorGameObjs[i]->isRender == true){
+			if(sceneActorGameObjs[i]->isRender == true  && (!sceneActorGameObjs[i]->isCulled || !TexOn)){
 				M->pushMatrix();
 				M->loadIdentity();
 
@@ -1987,7 +2138,7 @@ public:
 				{
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
@@ -2051,7 +2202,7 @@ public:
 				{
 					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
@@ -2147,7 +2298,7 @@ public:
 		return;
 	}
 
-	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	void renderWeapons(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &V, shared_ptr<Program> shader, bool TexOn)
 	{
 		static float rotato = 0.0f;
 		//shader bind by caller
@@ -2155,31 +2306,35 @@ public:
 
 		for (int i = 0; i < weapons.size(); i++)
 		{
-			M->pushMatrix();
-			if (TexOn)
+			if ((!weapons[i]->isCulled || !TexOn))
 			{
-				SetMaterial(2, shader); // Render the weapons as gold
+				M->pushMatrix();
+				if (TexOn)
+				{
+					SetMaterial(2, shader); // Render the weapons as gold
+				}
+
+				weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+				M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
+				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+
+				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+
+				M->popMatrix();
 			}
 			
-			weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
-			
-			M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
-			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
-			glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
-			weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
-
-			M->popMatrix();
 		}
 
 		//shader bind by caller
 		//shader->unbind();
 	}
 
-	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader, bool TexOn)
+	void renderTerrain(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<MatrixStack> &V, shared_ptr<Program> shader, bool TexOn)
 	{
 		//shader bind by caller
 		//shader->bind();
@@ -2187,66 +2342,69 @@ public:
 		
 		for (int i = 0; i < sceneTerrainObjs.size(); i++)
 		{
-			M->pushMatrix();
-			M->loadIdentity();
-
-			// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
-			sceneTerrainObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
-
-			// If terrain
-			if (TexOn)
+			if ((!sceneTerrainObjs[i]->isCulled || !TexOn))
 			{
-				if (sceneTerrainObjs[i]->isGroundTile)
+				M->pushMatrix();
+				M->loadIdentity();
+
+				// Update the position of the rabbit based on velocity, time elapsed also updates the center of the bbox
+				sceneTerrainObjs[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
+
+				// If terrain
+				if (TexOn)
 				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
-					//SetMaterial(1);
-					//M->scale(vec3(2.f, 2.f, 2.f));
+					if (sceneTerrainObjs[i]->isGroundTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+						//SetMaterial(1);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isUpperTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+						//SetMaterial(2);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isCoverTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						//SetMaterial(3);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isJumpTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+						//SetMaterial(4);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isUpperCoverTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						//SetMaterial(3);
+						//M->scale(vec3(2.f, 2.f, 2.f));
+					}
+					else if (sceneTerrainObjs[i]->isBoundingTile)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+					}
 				}
-				else if (sceneTerrainObjs[i]->isUpperTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Hex);
-					//SetMaterial(2);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isCoverTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-					//SetMaterial(3);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isJumpTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Hex);
-					//SetMaterial(4);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isUpperCoverTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-					//SetMaterial(3);
-					//M->scale(vec3(2.f, 2.f, 2.f));
-				}
-				else if (sceneTerrainObjs[i]->isBoundingTile)
-				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Wall);
-				}
+
+
+				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+
+				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+				M->popMatrix();
 			}
-			
-
-			glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-			glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-			glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-			glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(lookAt(curCamEye, curCamCenter, up)));
-
-			glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
-			sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
-			M->popMatrix();
 		}
 
 		//shader bind by caller
@@ -2709,7 +2867,10 @@ public:
 		M->pushMatrix();
 		//checkAllGameObjects();
 
-		//ToDo shadows: may need to wrap other render calls to get shadows?
+		//calculates if object is culled for all units, terrain, and floating wepons
+		applyVFC(P);
+
+		// renderShadows wrap other render calls so this renders most the world
 		renderShadows(M, P);
 
 		// Render a bullet
@@ -2791,6 +2952,31 @@ public:
 		//renderSkybox(P, M);
 
 		renderUI();
+
+		//VFC DEBUG MINIMAP
+		if (DEBUG_CULL) {
+			/* draw the culled scene from a top down camera */
+			glClear(GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 50, 500, 500);
+
+			prog->bind();
+
+			//SetOrthoMatrix(prog);
+			P->pushMatrix();
+			P->ortho(-150.0f, 150.0f, -150.0f, 150.0f, 0.1f, 100.f);
+
+			//SetTopView(prog);
+			auto V = make_shared<MatrixStack>();
+			V->pushMatrix();
+			V->lookAt(vec3(-1, 15, -1), vec3(0, 0, 0), vec3(0, 1, 0));
+
+			//drawScene(prog, CULL);
+			renderSceneActors(M, P, V, prog, true);
+			renderWeapons(M, P, V, prog, true);
+			SetMaterial(1, prog);
+			renderTerrain(M, P, V, prog, true);
+
+		}
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4

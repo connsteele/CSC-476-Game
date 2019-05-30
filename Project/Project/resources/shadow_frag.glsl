@@ -33,7 +33,7 @@ float TestShadow(vec4 LSfPos) {
     float bias = 0.001;
 	int plusmin = 1;
 	float divisor = ((plusmin* 2)+1) * ((plusmin* 2)+1);
-	float scaleIndex =  16384.f / 2.0f; //65536.0f / 4.0f;
+	float scaleIndex =  8192;
 	float sum = 0;
 	float xComp;
 	float yComp;
@@ -62,6 +62,7 @@ void main() {
 	float Shade;
 	float amb = 0.3;
 	vec4 MatColor;
+	vec4 AmbColor;
 
 
 	/*//from terrain
@@ -103,6 +104,7 @@ void main() {
 	vec3 ks = MatSpec * pow(dot(h,in_struct.fragNor),shine); 
    
 	MatColor = vec4(clamp(ka + kd + ks, 0, 1), 1.0);
+	AmbColor = vec4(MatAmb, 1.0);
 
 
 
@@ -111,7 +113,7 @@ void main() {
 
 	Shade = TestShadow(in_struct.fPosLS);
 
-	Outcolor = amb*(texColor0) + (1.0-Shade)*texColor0*MatColor*BaseColor;
+	Outcolor = amb*(texColor0*AmbColor) + (1.0-Shade)*texColor0*MatColor*BaseColor;
 	//Outcolor = vec4(vec3(1,1,1) * (1.0-Shade), 1);
 }
 
