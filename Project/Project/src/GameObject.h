@@ -25,7 +25,7 @@ public:
 	glm::vec3 bboxSize;
 	glm::vec3 bboxCenter;
 	glm::mat4 bboxTransform;
-	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot, isGroundTile, isUpperTile, isCoverTile, isJumpTile, isUpperCoverTile, isBoundingTile, isStaticGeom, isCulled;
+	bool hitByPlayer, visibleBbox, isPosessed, isRender, beenShot, isGroundTile, isUpperTile, isCoverTile, isJumpTile, isUpperCoverTile, isBoundingTile, isStaticGeom;
 	int team; // 0 is neutral, 1 for robots(player team), 2 for aliens
 	int currWeapon; //0 for default weapon, 1 for sphere gun, 2 for shotgun
 	float objVelocity = 0.0f;
@@ -39,7 +39,7 @@ public:
 
 	GameObject(const std::string& name, std::shared_ptr<Shape>& objModel, const std::string& resourceDirectory, std::shared_ptr<Program> curShaderProg, glm::vec3 pos, glm::vec3 orient, bool visibleBbox, int team, bool isStaticGeom);
 	void DrawGameObj(std::shared_ptr<Program> shader);
-	void renderBbox(std::shared_ptr<Program> shader);
+	void renderBbox();
 	void initBbox();
 	void step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up);
 	void DoCollisions(std::shared_ptr<MatrixStack> &M); //std::shared_ptr<GameObject> world

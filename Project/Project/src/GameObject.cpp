@@ -28,7 +28,6 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isStaticGeom = isStaticGeom;
 	this->health = 2.0f;
 	this->isUsed = false;
-	this->isCulled = false;
 
 	this->team = team;
 	this->currWeapon = 0;
@@ -43,7 +42,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 void GameObject::DrawGameObj(std::shared_ptr<Program> shader)
 {
 	objModel->draw(shader);
-	renderBbox(shader);
+	renderBbox();
 }
 
 void GameObject::step(float dt, std::shared_ptr<MatrixStack> &M, std::shared_ptr<MatrixStack> &P, glm::vec3 camLoc, glm::vec3 center, glm::vec3 up)
@@ -84,11 +83,11 @@ void GameObject::DoCollisions(std::shared_ptr<MatrixStack> &M) //std::shared_ptr
 }
 
 // Update the center of the bounding box for the model
-void GameObject::renderBbox(std::shared_ptr<Program> shader)
+void GameObject::renderBbox()
 {
 	if (visibleBbox)
 	{ 
-		glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(bboxTransform));
+		glUniformMatrix4fv(curShaderProg->getUniform("M"), 1, GL_FALSE, value_ptr(bboxTransform));
 		glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(

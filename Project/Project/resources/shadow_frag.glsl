@@ -30,39 +30,26 @@ in OUT_struct {
 /* called with the point projected into the light's coordinate space */
 float TestShadow(vec4 LSfPos) {
 
-    float bias = 0.001;
-	int plusmin = 1;
-	float divisor = ((plusmin* 2)+1) * ((plusmin* 2)+1);
-	float scaleIndex =  8192;
-	float sum = 0;
-	float xComp;
-	float yComp;
+    float bias = 0.005;
 
 	//1: shift the coordinates from -1, 1 to 0 ,1
     vec3 shifted = (LSfPos.xyz + vec3(1)) * 0.5;
+	//2: read off the stored depth (.) from the ShadowDepth, using the shifted.xy
+    float Ldepth = texture(shadowDepth, shifted.xy).r;
+	//3: compare to the current depth (.z) of the projected depth
+    if (Ldepth < shifted.z - bias)
+        return 1.0;
+	//4: return 1 if the point is shadowed
 
-	for(int i = -plusmin; i <= plusmin; i++) {
-		for(int j = -plusmin; j <= plusmin; j++) {
-			xComp = i/scaleIndex;
-			yComp = j/scaleIndex;
-			//2: read off the stored depth (.) from the ShadowDepth, using the shifted.xy
-			float Ldepth = texture(shadowDepth, shifted.xy + vec2(xComp, yComp)).r;
-			//3: compare to the current depth (.z) of the projected depth
-			if (Ldepth < shifted.z - bias)
-			    sum += 1.0;
-			//4: return 1 if the point is shadowed
-		}
-	}
 
-	return sum / divisor;
+	return 0.0;
 }
 
 void main() {
 
 	float Shade;
 	float amb = 0.3;
-	vec4 MatColor;
-	vec4 AmbColor;
+	vec4 color;
 
 
 	/*//from terrain
@@ -88,23 +75,20 @@ void main() {
     //color += specular;
     //color.a = 1;
 
-	*/
-
 	//from "simple_frag"
-	vec3 lightvec = lightSource;
+	vec3 lightvec = lightsource - wpos;
 	lightvec = normalize(lightvec);
 
 	//calc h
-	vec3 v = normalize(eye - in_struct.fPos); //use eye or camera
+	vec3 v = normalize(eye - wpos); //use eye or camera
 	vec3 h = normalize(v + lightvec );
    
    
-	vec3 ka = MatAmb;
-	vec3 kd = MatDif * clamp(dot(in_struct.fragNor, lightvec), 0, 1); 
-	vec3 ks = MatSpec * pow(dot(h,in_struct.fragNor),shine); 
+	vec3 ka = matamb;
+	vec3 kd = matdif * clamp(dot(fragnor, lightvec), 0, 1); 
+	vec3 ks = matspec * pow(dot(h,fragnor),shine); 
    
-	MatColor = vec4(clamp(ka + kd + ks, 0, 1), 1.0);
-	AmbColor = vec4(MatAmb, 1.0);
+	color = vec4(clamp(ka + kd + ks, 0, 1), 1.0);*/
 
 
 
@@ -113,7 +97,7 @@ void main() {
 
 	Shade = TestShadow(in_struct.fPosLS);
 
-	Outcolor = amb*(texColor0*AmbColor) + (1.0-Shade)*texColor0*MatColor*BaseColor;
+	Outcolor = amb*(texColor0) + (1.0-Shade)*texColor0*BaseColor;
 	//Outcolor = vec4(vec3(1,1,1) * (1.0-Shade), 1);
 }
 
