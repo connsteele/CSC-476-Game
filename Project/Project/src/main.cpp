@@ -164,6 +164,9 @@ public:
 	float velocity = 0.0f;
 	bool canJump = true;
 	bool readyToSwitch = false;
+
+	//Uniform spatial subdivison
+    vector<vector<shared_ptr<GameObject> > > UniformStructure;
 	
 
 	WindowManager * windowManager = nullptr;
@@ -1282,8 +1285,12 @@ public:
 		float tileScale = 2.0f;
 		shared_ptr<GameObject> terrainTemp;
 		float verticalOffset = (height * tileScale)/2.0f, horizontalOffset = (width * tileScale)/2.0f;
+
 		for (int i = 0; i < width; i++)
 		{
+            vector<shared_ptr<GameObject> > tempHeightVector(height);
+            UniformStructure.push_back(tempHeightVector);
+
 			for (int j = 0; j < height; j++)
 			{
 				int red = getColor(dataLayout, width, i, j, 0);
@@ -1299,6 +1306,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 255) && (blue == 0)) // If the color is yellow draw a upsairs tile
 				{
@@ -1308,6 +1318,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 255)) // If the color is purple draw a ground cover cube
 				{
@@ -1317,6 +1330,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 0) && (green == 255) && (blue == 0)) // If the color is green add a shotgun
 				{
@@ -1333,6 +1349,9 @@ public:
 					shared_ptr<Weapon> shotty = make_shared<Weapon>("shotbun", shotgun, "../resources/", prog, position, tileOrientation, true, 2, false, 1);
 					weapons.push_back(shotty);
 
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
+
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -1348,6 +1367,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 255) && (green == 0) && (blue == 0)) // If the color is red boundry tile
 				{
@@ -1379,6 +1401,9 @@ public:
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
+
+                    //Data Structure
+                    UniformStructure[i][j] = terrainTemp;
 				}
 				
 			}
@@ -2113,13 +2138,95 @@ public:
 		}
 	}
 
+    bool GravityCollision2(vec3 futurePosition){
+
+
+        if(possessedActor != NULL) {
+
+            vector<shared_ptr<GameObject> > nearbyBlocks;
+
+            int zSize = UniformStructure.size();
+            int xSize = UniformStructure[0].size();
+
+            int i = (int) (((futurePosition.z * -1.0f) + zSize) / 2.0f);
+            int j = (int) (((futurePosition.x * -1.0f) + xSize) / 2.0f);
+            nearbyBlocks.push_back(UniformStructure[i][j]);
+
+            //Check block to the right
+            if (j + 1 < xSize) {
+                int newJ = j + 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block to the left
+            if (j - 1 >= 0) {
+                int newJ = j - 1;
+                nearbyBlocks.push_back(UniformStructure[i][newJ]);
+            }
+
+            //Check block down right
+            if (j + 1 < xSize && i + 1 < zSize) {
+                int newJ = j + 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up right
+            if (j + 1 < xSize && i - 1 >= 0) {
+                int newJ = j + 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up left
+            if (j - 1 >= 0 && i - 1 >= 0) {
+                int newJ = j - 1;
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block down left
+            if (j - 1 >= 0 && i + 1 < zSize) {
+                int newJ = j - 1;
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][newJ]);
+            }
+
+            //Check block up
+            if (i - 1 >= 0) {
+                int newI = i - 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+            //Check down block
+            if (i + 1 < zSize) {
+                int newI = i + 1;
+                nearbyBlocks.push_back(UniformStructure[newI][j]);
+            }
+
+
+            for(int k = 0; k < nearbyBlocks.size(); k++){
+                bool collisionX = futurePosition.x + possessedActor->bboxSize.x >= nearbyBlocks[k]->bboxCenter.x && nearbyBlocks[k]->bboxCenter.x + nearbyBlocks[k]->bboxSize.x >= futurePosition.x;
+                bool collisionY = futurePosition.y + possessedActor->bboxSize.y >= nearbyBlocks[k]->bboxCenter.y && nearbyBlocks[k]->bboxCenter.y + nearbyBlocks[k]->bboxSize.y >= futurePosition.y;
+                bool collisionZ = futurePosition.z + possessedActor->bboxSize.z >= nearbyBlocks[k]->bboxCenter.z && nearbyBlocks[k]->bboxCenter.z + nearbyBlocks[k]->bboxSize.z >= futurePosition.z;
+
+                if(collisionX && collisionY && collisionZ){
+                    return collisionX && collisionY && collisionZ;
+                }
+            }
+            return false;
+
+        }
+
+    }
+
 	void ApplyGravity()
 	{
 		if(possessedActor != NULL)
 		{
 			float NewY = possessedActor->position.y + (velocity * deltaTime);
 			vec3 NewPosition = vec3(possessedActor->position.x, NewY, possessedActor->position.z);
-			if (!GravityGroundCollision(NewPosition)) {
+			if (!GravityCollision2(NewPosition)) {
 				possessedActor->position.y = NewY;
 			}
 			else{
