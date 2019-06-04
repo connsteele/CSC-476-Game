@@ -899,25 +899,38 @@ public:
 			glUniform3f(shader->getUniform("MatAmb"), 0.6, 0.4, 0.1);
 			glUniform3f(shader->getUniform("MatDif"), 0.7804, 0.5686, 0.11373);
 			glUniform3f(shader->getUniform("MatSpec"), 0.9922, 0.941176, 0.80784);
-			glUniform1f(shader->getUniform("shine"), 27.9);
+			glUniform1f(shader->getUniform("shine"), 60.0);
+			//shine used to be 27.9, upped to be more shiny/gold
 			break;
 		case 3: //Mine: red
 			glUniform3f(shader->getUniform("MatAmb"), 1.0, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.83, 0.2, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(shader->getUniform("shine"), 100.0);
+			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		case 4: //Mine: green
 			glUniform3f(shader->getUniform("MatAmb"), 0.2, 1.0, 0.2);
 			glUniform3f(shader->getUniform("MatDif"), 0.13, 0.8, 0.2);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
-			glUniform1f(shader->getUniform("shine"), 100.0);
+			glUniform1f(shader->getUniform("shine"), 20.0);
 			break;
 		case 5: // White
 			glUniform3f(shader->getUniform("MatAmb"), 1.0, 1.0, 1.0);
 			glUniform3f(shader->getUniform("MatDif"), 1.0, 1.0, 1.0);
 			glUniform3f(shader->getUniform("MatSpec"), 0.3, 0.22, 0.22);
 			glUniform1f(shader->getUniform("shine"), 20.0);
+			break;
+		case 6: //Mine: red health used
+			glUniform3f(shader->getUniform("MatAmb"), 0.4, 0.1, 0.2);
+			glUniform3f(shader->getUniform("MatDif"), 0.6, 0.1, 0.1);
+			glUniform3f(shader->getUniform("MatSpec"), 0.2, 0.1, 0.1);
+			glUniform1f(shader->getUniform("shine"), 5.0);
+			break;
+		case 7: //Mine: green health used
+			glUniform3f(shader->getUniform("MatAmb"), 0.1, 0.4, 0.1);
+			glUniform3f(shader->getUniform("MatDif"), 0.1, 0.6, 0.1);
+			glUniform3f(shader->getUniform("MatSpec"), 0.1, 0.2, 0.1);
+			glUniform1f(shader->getUniform("shine"), 5.0);
 			break;
 		}
 	}
@@ -1036,7 +1049,7 @@ public:
 		prog->addAttribute("vertTex");
 		prog->addUniform("lightSource"); //lighting uniform
 		prog->addUniform("eye");
-		prog->addUniform("hit"); //Uniform for determining color based on hit or not
+		//prog->addUniform("hit"); //Uniform for determining color based on hit or not
 
 		// Setup a terrain shader program
 		progTerrain = make_shared<Program>();
@@ -1070,11 +1083,11 @@ public:
 
 		DepthProgDebug->addUniform("LP");
 		DepthProgDebug->addUniform("LV");
-		DepthProgDebug->addUniform("P");
+		//DepthProgDebug->addUniform("P");
 		DepthProgDebug->addUniform("M");
-		DepthProgDebug->addUniform("V");
-		DepthProgDebug->addUniform("eye");
-		DepthProgDebug->addUniform("lightSource");
+		//DepthProgDebug->addUniform("V");
+		//DepthProgDebug->addUniform("eye");
+		//DepthProgDebug->addUniform("lightSource");
 		DepthProgDebug->addAttribute("vertPos");
 		//un-needed, but easier then modifying shape
 		DepthProgDebug->addAttribute("vertNor");
@@ -1106,11 +1119,11 @@ public:
 		/// Add uniform and attributes to each of the programs
 		DepthProg->addUniform("LP");
 		DepthProg->addUniform("LV");
-		DepthProg->addUniform("P");
+		//DepthProg->addUniform("P");
 		DepthProg->addUniform("M");
-		DepthProg->addUniform("V");
-		DepthProg->addUniform("eye");
-		DepthProg->addUniform("lightSource");
+		//DepthProg->addUniform("V");
+		//DepthProg->addUniform("eye");
+		//DepthProg->addUniform("lightSource");
 		DepthProg->addAttribute("vertPos");
 		//un-needed, but easier then modifying shape
 		DepthProg->addAttribute("vertNor");
@@ -1484,7 +1497,7 @@ public:
 				int red = getColor(dataLayout, width, i, j, 0);
 				int green = getColor(dataLayout, width, i, j, 1);
 				int blue = getColor(dataLayout, width, i, j, 2);
-				printf("current Width: %d, Height: %d, Color: %d %d %d\n", i, j, red, green, blue);
+				//printf("current Width: %d, Height: %d, Color: %d %d %d\n", i, j, red, green, blue);
 				//--- Set the position of the object based on the color of the current pixel in the image
 				if ((red == 255) && (green == 255) && (blue == 255)) // If the color is white draw a ground tile 
 				{
@@ -2150,28 +2163,43 @@ public:
 				//}
 				if (TexOn && sceneActorGameObjs[i]->team == 1)
 				{
-					SetMaterial(3, shader);
+					if (sceneActorGameObjs[i]->isUsed == true)
+					{
+						//dark red for used
+						SetMaterial(6, shader);
+					}
+					else
+					{
+						//bright red for not used
+						SetMaterial(3, shader);
+					}
 				}
 				else if (TexOn && sceneActorGameObjs[i]->team == 2)
 				{
-					SetMaterial(4, shader);
-				}
-
-				// Set the color to grey if the units have been used
-				if (TexOn && sceneActorGameObjs[i]->isUsed == true)
-				{
-					SetMaterial(1, shader);
+					if (sceneActorGameObjs[i]->isUsed == true)
+					{
+						//dark green for used
+						SetMaterial(7, shader);
+					}
+					else
+					{
+						//bright green for not used
+						SetMaterial(4, shader);
+					}
 				}
 
 				// Draw the idle animation for robots that aren't dead
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
-					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					if (TexOn) {
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_White);
+						glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+						glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+						glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+						glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					}
+
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
 
@@ -2244,11 +2272,29 @@ public:
 					{ 
 						if (sceneActorGameObjs[i]->isUsed)
 						{
-							SetMaterial(5, prog);
+							if (sceneActorGameObjs[i]->team == 1)
+							{
+								SetMaterial(6, prog);
+							}
+							else
+							{
+								SetMaterial(7, prog);
+							}
+							//old white material
+							//SetMaterial(5, prog);
 						}
 						else // If the unit has not been used use golden health boxes
 						{
-							SetMaterial(2, prog);
+							if (sceneActorGameObjs[i]->team == 1)
+							{
+								SetMaterial(3, prog);
+							}
+							else
+							{
+								SetMaterial(4, prog);
+							}
+							//old gold material
+							//SetMaterial(2, prog);
 						}
 						M->pushMatrix();
 						M->translate(vec3(-1.0f + ( 2 * j ), 4.5f, 0.0f));
@@ -2285,12 +2331,15 @@ public:
 				}
 				else // Draw and animate dead robots
 				{
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
-					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					if (TexOn)
+					{
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+						glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+						glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+						glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+						glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					}
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					// sceneActorGameObjs[i]->DrawGameObj(shader); // Draw the model associated with the game object and its bbox if enabled
 
@@ -2393,7 +2442,7 @@ public:
 
 		for (int i = 0; i < weapons.size(); i++)
 		{
-			if ((!weapons[i]->isCulled || !TexOn))
+			if (!weapons[i]->isCulled || !TexOn)
 			{
 				M->pushMatrix();
 				if (TexOn)
@@ -2404,12 +2453,15 @@ public:
 				weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 
 				M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
-				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 
-				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				if (TexOn) {
+					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				}
+
+				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 				weapons[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 
 				M->popMatrix();
@@ -2482,13 +2534,15 @@ public:
 					}
 				}
 
+				if (TexOn)
+				{
+					glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+					glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+				}
 
-				glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-				glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-				glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-
-				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 				sceneTerrainObjs[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
 				M->popMatrix();
 			}
