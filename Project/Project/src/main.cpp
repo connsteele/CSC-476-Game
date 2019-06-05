@@ -98,7 +98,7 @@ float elapsedTime = 0.0f;
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 10; // use 11
+int turnLength = 1000; // use 11
 
 bool isCaptureCursor = false;
 
@@ -411,6 +411,24 @@ public:
                     possessedActor->position = newPosition;
 					checkWeaponCollection(newPosition);
                 }
+			    else{
+                    vec3 newPosition2 = newPosition + cross(up, camMove) * followMoveSpd;
+                    newPosition2.y = CurrentYPosition;
+                    bool hitObject2 = ComputePlayerHitObjects(newPosition2);
+                    if(!hitObject2){
+                        possessedActor->position = newPosition2;
+                        checkWeaponCollection(newPosition2);
+                    }
+                    else{
+                        vec3 newPosition3 = newPosition - cross(up, camMove) * followMoveSpd;
+                        newPosition3.y = CurrentYPosition;
+                        bool hitObject3 = ComputePlayerHitObjects(newPosition3);
+                        if(!hitObject3){
+                            possessedActor->position = newPosition3;
+                            checkWeaponCollection(newPosition3);
+                        }
+                    }
+			    }
 			}
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -447,6 +465,7 @@ public:
 			    velocity = 7.0f;
 			    canJump = false;
 			}
+
 		}
 		//else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
 		//{
