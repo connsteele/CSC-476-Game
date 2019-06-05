@@ -95,8 +95,11 @@ float lastFrame = 0.0f;
 int nbFrames = 0;
 float elapsedTime = 0.0f;
 
-//Check if button is held down
+
+//Movement variables
 bool buttonDown = false;
+bool updateMovement = false;
+vec3 moveDir = vec3(0,0,0);
 
 //Turn Time
 double turnStartTime = 0;
@@ -298,7 +301,7 @@ public:
                                   AllGameObjects[i]->bboxCenter.z + AllGameObjects[i]->bboxSize.z >= NewCenter.z;
 
                 bool HitResult = collisionX && collisionY && collisionZ;
-
+				
                 if (HitResult) {
                     return HitResult;
                 }
@@ -331,19 +334,55 @@ public:
         return;
 	}
 
+	void movementLogic() {
+		if(possessedActor)
+		{ 
+			float followMoveSpd = 10.0f * deltaTime;
+			float CurrentYPosition = possessedActor->position.y;
+			vec3 newPosition = possessedActor->position + moveDir;
+			newPosition.y = CurrentYPosition;//+ 0.1f;
+			bool hitObject = ComputePlayerHitObjects(newPosition);
+			if (!hitObject) {
+				possessedActor->position = newPosition;
+				checkWeaponCollection(newPosition);
+			}
+			else{
+				vec3 newPosition2 = newPosition + cross(up, camMove) * followMoveSpd;
+				newPosition2.y = CurrentYPosition;
+				bool hitObject2 = ComputePlayerHitObjects(newPosition2);
+				if (!hitObject2) {
+					possessedActor->position = newPosition2;
+					checkWeaponCollection(newPosition2);
+				}
+				else {
+					vec3 newPosition3 = newPosition - cross(up, camMove) * followMoveSpd;
+					newPosition3.y = CurrentYPosition;
+					bool hitObject3 = ComputePlayerHitObjects(newPosition3);
+					if (!hitObject3) {
+						possessedActor->position = newPosition3;
+						checkWeaponCollection(newPosition3);
+					}
+				}
+			}
+		}
+	}
+
 
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
-
+		static int numKeysPressed = 0;
+		static bool moveKeyReleased = false;
         if(action == GLFW_PRESS){
             buttonDown = true;
         }
-        else if(action == GLFW_RELEASE){
+        /*else if(action == GLFW_RELEASE && moveKeyReleased){
             buttonDown = false;
-        }
+			updateMovement = false;
+			moveDir = vec3(0, 0, 0);
+        }*/
 
-		float followMoveSpd = 14.0f * deltaTime;
-		float overheadMoveSpd = 110.0f * deltaTime;
+		float followMoveSpd = 5.0f * deltaTime;
+		// float overheadMoveSpd = 1.0f * deltaTime;
 
 		if (key == GLFW_KEY_ESCAPE && (action == GLFW_PRESS || action == GLFW_REPEAT))
 		{
@@ -407,76 +446,79 @@ public:
 		}
 		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
 		{
-		    if(action == GLFW_PRESS){
-
-		    }
+		    
 		    //float FixedHeight = 0.1f; // Used to lock vertical position of models
 		    // possessedActor->position.y = 0.1f;
 
 			float CurrentYPosition = possessedActor->position.y;
+			moveDir = vec3(0, 0, 0);
 
-			if (key == GLFW_KEY_W && buttonDown)
+			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 			{
-			    vec3 newPosition = possessedActor-> position + (camMove * followMoveSpd * deltaTime);
-				newPosition.y = CurrentYPosition;//+ 0.1f;
-			    bool hitObject = ComputePlayerHitObjects(newPosition);
-			    if(!hitObject) {
-                    possessedActor->position = newPosition;
-					checkWeaponCollection(newPosition);
-                }
-			    else{
-                    vec3 newPosition2 = newPosition + cross(up, camMove) * followMoveSpd;
-                    newPosition2.y = CurrentYPosition;
-                    bool hitObject2 = ComputePlayerHitObjects(newPosition2);
-                    if(!hitObject2){
-                        possessedActor->position = newPosition2;
-                        checkWeaponCollection(newPosition2);
-                    }
-                    else{
-                        vec3 newPosition3 = newPosition - cross(up, camMove) * followMoveSpd;
-                        newPosition3.y = CurrentYPosition;
-                        bool hitObject3 = ComputePlayerHitObjects(newPosition3);
-                        if(!hitObject3){
-                            possessedActor->position = newPosition3;
-                            checkWeaponCollection(newPosition3);
-                        }
-                    }
-			    }
+				updateMovement = true;
+				moveDir += (camMove * followMoveSpd);
+				moveKeyReleased = true;
 			}
-			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 			{
-			    vec3 newPosition = possessedActor->position - (camMove * followMoveSpd);
-			    newPosition.y = CurrentYPosition;// + 0.1f;
-                bool hitObject = ComputePlayerHitObjects(newPosition);
-                if(!hitObject) {
-                    possessedActor->position = newPosition;
-					checkWeaponCollection(newPosition);
-                }
+				updateMovement = true;
+				moveDir += -(camMove * followMoveSpd);
+				moveKeyReleased = true;
 			}
-			else if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 			{
-			    vec3 newPosition = possessedActor->position + cross(up, camMove) * followMoveSpd;
-			    newPosition.y = CurrentYPosition;// + 0.1f;
-                bool hitObject = ComputePlayerHitObjects(newPosition);
-                if(!hitObject) {
-                    possessedActor->position = newPosition;
-					checkWeaponCollection(newPosition);
-                }
+				updateMovement = true;
+				moveDir += cross(up, camMove) * followMoveSpd;
+				moveKeyReleased = true;
 			}
-			else if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 			{
-			    vec3 newPosition = possessedActor->position - cross(up, camMove) * followMoveSpd;
-			    newPosition.y = CurrentYPosition;// + 0.1f;
-                bool hitObject = ComputePlayerHitObjects(newPosition);
-                if(!hitObject) {
+				updateMovement = true;
+				moveDir += -(cross(up, camMove) * followMoveSpd);
+				moveKeyReleased = true;
+			}
+			//diagnol movements
+			/*if ( glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS &&
+				glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			{
+				updateMovement = true;
+				moveDir = -(cross(up, camMove) * followMoveSpd);
+				moveDir += (camMove * followMoveSpd);
+				moveDir /= 1.8f;
+				moveKeyReleased = false;
+			}
+			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS &&
+				glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			{
+				updateMovement = true;
+				moveDir = (cross(up, camMove) * followMoveSpd);
+				moveDir += (camMove * followMoveSpd);
+				moveDir /= 1.8f;
+				moveKeyReleased = false;
+			}
+			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS &&
+				glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+			{
+				updateMovement = true;
+				moveDir = -(cross(up, camMove) * followMoveSpd);
+				moveDir -= (camMove * followMoveSpd);
+				moveDir /= 1.8f;
+				moveKeyReleased = false;
+			}
+			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS &&
+				glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+			{
+				updateMovement = true;
+				moveDir = (cross(up, camMove) * followMoveSpd);
+				moveDir -= (camMove * followMoveSpd);
+				moveDir /= 1.8f;
+				moveKeyReleased = false;
+			}*/
 
-                    possessedActor->position = newPosition;
-					checkWeaponCollection(newPosition);
-                }
-			}
-			else if(key == GLFW_KEY_SPACE && (action == GLFW_PRESS) && canJump){
+			if(key == GLFW_KEY_SPACE  && canJump){
 			    velocity = 7.0f;
 			    canJump = false;
+				moveKeyReleased = false;
 			}
 
 		}
@@ -1535,7 +1577,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size()-1]->isGroundTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -1547,7 +1589,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -1559,7 +1601,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, 0.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -1571,7 +1613,7 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isJumpTile = true; // Is actually a weapon tile
                     AllGameObjects.push_back(terrainTemp);
@@ -1590,13 +1632,13 @@ public:
 				{
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale/2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperCoverTile = true;
                     AllGameObjects.push_back(terrainTemp);
@@ -1610,27 +1652,27 @@ public:
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale / 2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale / 2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, 3.0f * tileScale / 2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
 
 					tilePos = glm::vec3(verticalOffset + j * -tileScale, 5.0f * tileScale / 2.0f, horizontalOffset - i * tileScale);
 					// Make a cube game object and push it back into the array so it is drawn
-					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, false, 0, true);
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
 					sceneTerrainObjs.push_back(terrainTemp);
 					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isBoundingTile = true;
 					AllGameObjects.push_back(terrainTemp);
@@ -2956,7 +2998,7 @@ public:
 			}
 			else if (possessedActor)
 			{
-				curCamEye = possessedActor->position;
+				curCamEye = possessedActor->position - vec3(0.f, 0.f, 0.5f );
 				x = radius * cos(phi)*cos(theta);
 				y = radius * sin(phi);
 				z = radius * cos(phi)*sin(theta);
@@ -3039,8 +3081,13 @@ public:
             velocity += deltaTime * acceleration;
         }
 
-
+		//Gravity Logic
 		ApplyGravity();
+
+		//FirstPerson Movement
+		if (updateMovement) {
+			movementLogic();
+		}
 
 		M->pushMatrix();
 		//checkAllGameObjects();
@@ -3207,7 +3254,7 @@ int main(int argc, char **argv)
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
 	application->initUI(windowManager->getHandle());
-	application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE);
+	// application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE); // Play sweet sweet music
 
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
