@@ -190,7 +190,8 @@ public:
 	int numUsedAliens = 0;
 	int numUsedRobots = 0;
 	
-	
+	//Global reference to damaged player
+	shared_ptr<GameObject> DamagedPlayer = NULL;
 
 	//Player Gravity Variables
 	float acceleration = -9.8f;
@@ -663,29 +664,30 @@ public:
             didHitObject = true;
 
             if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
-				if (HitObjects[minDistanceIndex]->health >= 1.0f)
-				{
-					HitObjects[minDistanceIndex]->health -= 1.0f;
+				DamagedPlayer = HitObjects[minDistanceIndex];
+				//if (HitObjects[minDistanceIndex]->health >= 1.0f)
+				//{
+				//	HitObjects[minDistanceIndex]->health -= 1.0f;
 
-					// Check to see if a units is dead, if it is remove it from the game
-					if (HitObjects[minDistanceIndex]->health <= 0.0f) {
-						HitObjects[minDistanceIndex]->beenShot = true;
-						if (teamNum == 1) {
-							numAlienUnits--;
-							if (HitObjects[minDistanceIndex]->isUsed)
-							{
-								numUsedAliens--;
-							}
-						}
-						else {
-							numRobotUnits--;
-							if (HitObjects[minDistanceIndex]->isUsed)
-							{
-								numUsedRobots--;
-							}
-						}
-					}
-				}
+				//	// Check to see if a units is dead, if it is remove it from the game
+				//	if (HitObjects[minDistanceIndex]->health <= 0.0f) {
+				//		HitObjects[minDistanceIndex]->beenShot = true;
+				//		if (teamNum == 1) {
+				//			numAlienUnits--;
+				//			if (HitObjects[minDistanceIndex]->isUsed)
+				//			{
+				//				numUsedAliens--;
+				//			}
+				//		}
+				//		else {
+				//			numRobotUnits--;
+				//			if (HitObjects[minDistanceIndex]->isUsed)
+				//			{
+				//				numUsedRobots--;
+				//			}
+				//		}
+				//	}
+				//}
             }
         }
         else {
@@ -2123,6 +2125,35 @@ public:
 				if (didHitObject) {
 
 					if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
+
+						if (DamagedPlayer != NULL) {
+							if (DamagedPlayer->health >= 1.0f)
+							{
+								DamagedPlayer->health -= 1.0f;
+
+								// Check to see if a units is dead, if it is remove it from the game
+								if (DamagedPlayer->health <= 0.0f) {
+									DamagedPlayer->beenShot = true;
+									if (DamagedPlayer->team == 2) {
+										numAlienUnits--;
+										if (DamagedPlayer->isUsed)
+										{
+											numUsedAliens--;
+										}
+									}
+									else {
+										numRobotUnits--;
+										if (DamagedPlayer->isUsed)
+										{
+											numUsedRobots--;
+										}
+									}
+								}
+							}
+						}
+
+
+						DamagedPlayer = NULL;
 						renderBulletObj = NULL;
 						didHitObject = false;
 
