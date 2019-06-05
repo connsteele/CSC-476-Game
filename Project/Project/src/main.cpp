@@ -337,6 +337,7 @@ public:
 	void movementLogic() {
 		if(possessedActor)
 		{ 
+			float followMoveSpd = 10.0f * deltaTime;
 			float CurrentYPosition = possessedActor->position.y;
 			vec3 newPosition = possessedActor->position + moveDir;
 			newPosition.y = CurrentYPosition;//+ 0.1f;
@@ -345,7 +346,7 @@ public:
 				possessedActor->position = newPosition;
 				checkWeaponCollection(newPosition);
 			}
-			/*else {
+			else{
 				vec3 newPosition2 = newPosition + cross(up, camMove) * followMoveSpd;
 				newPosition2.y = CurrentYPosition;
 				bool hitObject2 = ComputePlayerHitObjects(newPosition2);
@@ -362,7 +363,7 @@ public:
 						checkWeaponCollection(newPosition3);
 					}
 				}
-			}*/
+			}
 		}
 	}
 
