@@ -155,7 +155,7 @@ UIController overViewUI;
 UIController firstPersonUI;
 UIController debugUI;
 #define DEBUG_MODE 1   //!= 0 to display debug UI window; 0 to hide
-
+#define MAXNUMUNITS 4
 
 class Application : public EventCallbacks
 {
@@ -187,6 +187,9 @@ public:
 	//Keep track of how many units remain for each team
 	int numAlienUnits = 4;
 	int numRobotUnits = 4;
+	int numUsedAliens = 0;
+	int numUsedRobots = 0;
+	
 	
 
 	//Player Gravity Variables
@@ -669,9 +672,17 @@ public:
 						HitObjects[minDistanceIndex]->beenShot = true;
 						if (teamNum == 1) {
 							numAlienUnits--;
+							if (HitObjects[minDistanceIndex]->isUsed)
+							{
+								numUsedAliens--;
+							}
 						}
 						else {
 							numRobotUnits--;
+							if (HitObjects[minDistanceIndex]->isUsed)
+							{
+								numUsedRobots--;
+							}
 						}
 					}
 				}
@@ -692,26 +703,40 @@ public:
 
 				bool isClicked = RayTraceCamera(ray_wor, TeamArray[i]);
 
-				if (isClicked && possessedActor == NULL && isOverheadView && TeamArray[i]->health > 0) {
+				if (isClicked && possessedActor == NULL && isOverheadView && TeamArray[i]->health > 0 && !(TeamArray[i]->isUsed)) {
+
+					// TeamArray[i]->isUsed = true;
+					possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
+					possessedActor->isUsed = true;
+					if (TeamArray[i]->team == 1)
+					{
+						numUsedRobots++;
+						SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+					}
+					else if (TeamArray[i]->team == 2)
+					{
+						numUsedAliens++;
+						SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+					}
 
 					// Check if unit has been used (check if not empty first)
-					if (!UsedArray.empty()) {
-						if (find(UsedArray.begin(), UsedArray.end(), TeamArray[i]) == UsedArray.end()) {
-							TeamArray[i]->isPosessed = true;
-							possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
-							UsedArray.push_back(TeamArray[i]);
-							TeamArray[i]->isUsed = true;
-                            SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
-						}
-					}
-					// Add first unit to array
-					else {
-						TeamArray[i]->isPosessed = true;
-						possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
-						UsedArray.push_back(TeamArray[i]);
-						TeamArray[i]->isUsed = true;
-                        SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
-					}
+					//if (!UsedArray.empty()) {
+					//	if (find(UsedArray.begin(), UsedArray.end(), TeamArray[i]) == UsedArray.end()) {
+					//		TeamArray[i]->isPosessed = true;
+					//		possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
+					//		// UsedArray.push_back(TeamArray[i]);
+					//		TeamArray[i]->isUsed = true;
+     //                       SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+					//	}
+					//}
+					//// Add first unit to array
+					//else {
+					//	TeamArray[i]->isPosessed = true;
+					//	possessedActor = TeamArray[i]; // tell the interpolate function that it should possess the clicked object
+					//	UsedArray.push_back(TeamArray[i]);
+					//	TeamArray[i]->isUsed = true;
+     //                   SoundEngine->play2D("../resources/woosh.mp3", GL_FALSE);
+					//}
 
 					//Turn off cursor and starts interpolate of possesed unit
 					isCaptureCursor = !isCaptureCursor;
@@ -1399,47 +1424,6 @@ public:
 		shotgun->loadMesh(resourceDirectory + "/shotgun.obj");
 		shotgun->resize();
 		shotgun->init();
-
-		// ----- Load the models for the idle animation
-		// Robot Default pose
-		//string err;
-		//bool fbool;
-		//fbool = false;
-		//fbool = tinyobj::LoadObj(robotDefault, robotDefaultMat, err, "../resources/robot0.obj");
-		//if (robotDefault.size() <= 0) {
-		//	cout << "robotDefault size < 0";
-		//	return;
-		//}
-		//glGenBuffers(1, &buffRobotDefault);
-		//glBindBuffer(GL_ARRAY_BUFFER, buffRobotDefault);
-		//glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.positions.size() * sizeof(float), &robotDefault[0].mesh.positions[0], GL_DYNAMIC_DRAW);
-		//glEnableVertexAttribArray(0);
-		//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
-		////Bind Default FaceNorms
-		//glGenBuffers(1, &buffRobotNormDefault);
-		//glBindBuffer(GL_ARRAY_BUFFER, buffRobotNormDefault);
-		//glBufferData(GL_ARRAY_BUFFER, robotDefault[0].mesh.normals.size() * sizeof(float), &robotDefault[0].mesh.normals[0], GL_STATIC_DRAW);
-		//glEnableVertexAttribArray(1);
-		//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
-
-		//// Robots Pose 2
-		//fbool = false;
-		//fbool = tinyobj::LoadObj(robot1, robot1Mat, err, "../resources/robot0.obj");
-		//if (robot1.size() <= 0) {
-		//	cout << "robot1 size < 0";
-		//	return;
-		//}
-		//glGenBuffers(1, &buffRobot1);
-		//glBindBuffer(GL_ARRAY_BUFFER, buffRobot1);
-		//glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.positions.size() * sizeof(float), &robot1[0].mesh.positions[0], GL_DYNAMIC_DRAW);
-		//glEnableVertexAttribArray(0);
-		//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 0)
-		////Bind Default FaceNorms
-		//glGenBuffers(1, &buffRobot1Norm);
-		//glBindBuffer(GL_ARRAY_BUFFER, buffRobot1Norm);
-		//glBufferData(GL_ARRAY_BUFFER, robot1[0].mesh.normals.size() * sizeof(float), &robot1[0].mesh.normals[0], GL_STATIC_DRAW);
-		//glEnableVertexAttribArray(1);
-		//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // layout(location = 1)
 
 
 		// Setup player bbox
@@ -2674,25 +2658,27 @@ public:
 	void switchTurn() {
 		if (whoseTurn == 1) {
 			// if all units used clear array and allow them to be used again
-			if (usedRobotUnits.size() >= numRobotUnits) {
-				for(int i = 0; i < usedRobotUnits.size(); i++){
-					usedRobotUnits[i]->isUsed = false;
+			if (numRobotUnits <= numUsedRobots) {
+				for(int i = 0; i < robotUnits.size(); i++){
+					robotUnits[i]->isUsed = false;
 				}
-				usedRobotUnits.clear();
+				// robotUnits.clear();
+				numUsedRobots = 0;
 			}
 			// switch turn
 			whoseTurn = 2;
 		}
 		else if (whoseTurn == 2) {
 			// if all units used clear array and allow them to be used again
-			if (usedAlienUnits.size() >= numAlienUnits) {
+			if (numAlienUnits <= numUsedAliens) {
 				
 				//Walkthrough used array to set bools back to unused
-				for(int i = 0; i < usedAlienUnits.size(); i++){
-					usedAlienUnits[i]->isUsed = false;
+				for(int i = 0; i < alienUnits.size(); i++){
+					alienUnits[i]->isUsed = false;
 				}
 				
-				usedAlienUnits.clear();
+				// usedAlienUnits.clear();
+				numUsedAliens = 0;
 			}
 			// switch turn
 			whoseTurn = 1;
@@ -2848,11 +2834,11 @@ public:
 			ImGui::Text("Take Your Turn Player %d !!!", whoseTurn);
 
 			if (whoseTurn == 1) {
-				ImGui::Text("You have %d robots left", numRobotUnits - usedRobotUnits.size());
+				ImGui::Text("You have %d robots left", numRobotUnits - numUsedRobots);
 			}
 
 			else if (whoseTurn == 2) {
-				ImGui::Text("You have %d aliens left", numAlienUnits - usedAlienUnits.size());
+				ImGui::Text("You have %d aliens left", numAlienUnits - numUsedAliens);
 			}
 
 			for (int i=0; i < sceneActorGameObjs.size(); i++) {
