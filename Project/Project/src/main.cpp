@@ -83,9 +83,9 @@ vector<vec3> coverCubesLocs;
 
 //--- Variables that control hierarchical animation
 float headRot = 0.0f, deathRot = 0.0f, deathTranslation = 0.0f;
-vector<float> deathRots(8, 0.0f);
-vector<float> deathTranslations(8, 0.0f);
-bool headBob = false; // controls what way to bob
+vector<float> deathRots(8, 0.0f); // Initialize a vector of size 8 with all 0.0f
+vector<float> deathTranslations(8, 0.0f); // Initialize a vector of size 8 with all 0.0f
+bool headBob = false; // controls what way to bob head
 
 
 
@@ -94,6 +94,8 @@ float deltaTime = 0.0f, lastTime = glfwGetTime();
 float lastFrame = 0.0f;
 int nbFrames = 0;
 float elapsedTime = 0.0f;
+vec3 lastBulletPos = vec3(0.0f, 0.0f, 0.0f);
+float waitTime = 2.0f;
 
 
 //Movement variables
@@ -118,7 +120,7 @@ vec3 up = vec3(0, 1, 0);
 //const vec3 movespd = vec3(.2);	// movespd for each keypress. equivalent to .2, .2, .2
 
 // Properties for Overhead Camera
-vec3 oCamEye = vec3(-25.0f, 60.0f, 0.00);
+vec3 oCamEye = vec3(-30.0f, 65.0f, 0.00);
 
 // Current Camera
 vec3 curCamEye = oCamEye;
@@ -477,43 +479,6 @@ public:
 				moveDir += -(cross(up, camMove) * followMoveSpd);
 				moveKeyReleased = true;
 			}
-			//diagnol movements
-			/*if ( glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS &&
-				glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir = -(cross(up, camMove) * followMoveSpd);
-				moveDir += (camMove * followMoveSpd);
-				moveDir /= 1.8f;
-				moveKeyReleased = false;
-			}
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS &&
-				glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir = (cross(up, camMove) * followMoveSpd);
-				moveDir += (camMove * followMoveSpd);
-				moveDir /= 1.8f;
-				moveKeyReleased = false;
-			}
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS &&
-				glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir = -(cross(up, camMove) * followMoveSpd);
-				moveDir -= (camMove * followMoveSpd);
-				moveDir /= 1.8f;
-				moveKeyReleased = false;
-			}
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS &&
-				glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir = (cross(up, camMove) * followMoveSpd);
-				moveDir -= (camMove * followMoveSpd);
-				moveDir /= 1.8f;
-				moveKeyReleased = false;
-			}*/
 
 			if(key == GLFW_KEY_SPACE  && canJump){
 			    velocity = 7.0f;
@@ -686,6 +651,7 @@ public:
             }
         }
 
+		// If something was hit by a bullet
         if (HitObjects.size() != 0) {
 
             //Set Object Bullet hit for rendering collision
@@ -694,16 +660,21 @@ public:
             didHitObject = true;
 
             if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
-                HitObjects[minDistanceIndex]->health -= 1.0f;
-                if (HitObjects[minDistanceIndex]->health == 0.0f) {
-                    HitObjects[minDistanceIndex]->beenShot = true;
-                    if(teamNum == 1){
-                        numAlienUnits--;
-                    }
-                    else{
-                        numRobotUnits--;
-                    }
-                }
+				if (HitObjects[minDistanceIndex]->health >= 1.0f)
+				{
+					HitObjects[minDistanceIndex]->health -= 1.0f;
+
+					// Check to see if a units is dead, if it is remove it from the game
+					if (HitObjects[minDistanceIndex]->health <= 0.0f) {
+						HitObjects[minDistanceIndex]->beenShot = true;
+						if (teamNum == 1) {
+							numAlienUnits--;
+						}
+						else {
+							numRobotUnits--;
+						}
+					}
+				}
             }
         }
         else {
@@ -766,7 +737,7 @@ public:
 		//Only run weapon loop if possessed actor exists
 		else if (possessedActor != NULL) {
 
-			//if weapon is shotgun
+			//---- if weapon is shotgun
 			if (possessedActor->currWeapon == 1) {
 
                 vector<shared_ptr<GameObject> > HitObjects1;
@@ -849,6 +820,7 @@ public:
                 SoundEngine->play2D("../resources/shotgun.mp3", GL_FALSE);
 
 			}
+			//--- Pistol Weapon
 			else if (possessedActor->currWeapon == 0) {
 
                 vector<shared_ptr<GameObject> > HitObjects;
@@ -2131,6 +2103,7 @@ public:
 	}
 
 
+
 	void renderBullet(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader)
 	{
 
@@ -2157,13 +2130,13 @@ public:
 				glUniform3f(shader->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 
 				bullets[i]->DrawGameObj(shader); // Draw the bunny model and render bbox
+				lastBulletPos = bullets[i]->position; // Save the position of the bullet
 
 				M->popMatrix();
 
 
 				// -- Hit detection
 				if (didHitObject) {
-
 
 					if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
 						renderBulletObj = NULL;
@@ -2483,7 +2456,6 @@ public:
 
 				}
 				
-
 				M->popMatrix();
 			}
 			
@@ -2986,7 +2958,8 @@ public:
 		{
 			if (possessedBullet)
 			{
-				curCamEye = possessedBullet->position + vec3(0.0f, 6.0f, 0.0f);
+				curCamEye = lastBulletPos + vec3(0.0f, 6.0f, 0.0f);;
+				// curCamEye = possessedBullet->position + vec3(0.0f, 6.0f, 0.0f);
 				// possessedActor = NULL;
 				ox = 0.1f;
 				oy = -1.0f;
