@@ -95,10 +95,13 @@ float lastFrame = 0.0f;
 int nbFrames = 0;
 float elapsedTime = 0.0f;
 
+//Check if button is held down
+bool buttonDown = false;
+
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 10; // use 11
+int turnLength = 1000; // use 11
 
 bool isCaptureCursor = false;
 
@@ -332,6 +335,13 @@ public:
 	void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 	{
 
+        if(action == GLFW_PRESS){
+            buttonDown = true;
+        }
+        else if(action == GLFW_RELEASE){
+            buttonDown = false;
+        }
+
 		float followMoveSpd = 14.0f * deltaTime;
 		float overheadMoveSpd = 110.0f * deltaTime;
 
@@ -397,20 +407,41 @@ public:
 		}
 		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
 		{
+		    if(action == GLFW_PRESS){
+
+		    }
 		    //float FixedHeight = 0.1f; // Used to lock vertical position of models
 		    // possessedActor->position.y = 0.1f;
 
 			float CurrentYPosition = possessedActor->position.y;
 
-			if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT))
+			if (key == GLFW_KEY_W && buttonDown)
 			{
-			    vec3 newPosition = possessedActor-> position + (camMove * followMoveSpd);
+			    vec3 newPosition = possessedActor-> position + (camMove * followMoveSpd * deltaTime);
 				newPosition.y = CurrentYPosition;//+ 0.1f;
 			    bool hitObject = ComputePlayerHitObjects(newPosition);
 			    if(!hitObject) {
                     possessedActor->position = newPosition;
 					checkWeaponCollection(newPosition);
                 }
+			    else{
+                    vec3 newPosition2 = newPosition + cross(up, camMove) * followMoveSpd;
+                    newPosition2.y = CurrentYPosition;
+                    bool hitObject2 = ComputePlayerHitObjects(newPosition2);
+                    if(!hitObject2){
+                        possessedActor->position = newPosition2;
+                        checkWeaponCollection(newPosition2);
+                    }
+                    else{
+                        vec3 newPosition3 = newPosition - cross(up, camMove) * followMoveSpd;
+                        newPosition3.y = CurrentYPosition;
+                        bool hitObject3 = ComputePlayerHitObjects(newPosition3);
+                        if(!hitObject3){
+                            possessedActor->position = newPosition3;
+                            checkWeaponCollection(newPosition3);
+                        }
+                    }
+			    }
 			}
 			else if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT))
 			{
@@ -447,6 +478,7 @@ public:
 			    velocity = 7.0f;
 			    canJump = false;
 			}
+
 		}
 		//else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
 		//{
