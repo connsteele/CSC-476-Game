@@ -79,10 +79,16 @@ if(WIN32)
   target_link_libraries(${CMAKE_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/resources/include/irrKlang/lib/Win64/irrKlang.lib)
   target_link_libraries(${CMAKE_PROJECT_NAME} opengl32.lib)
 
+    #Copy Dll's into binary folder
+
   file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/include/irrKlang/lib/Win64/irrKlang.dll
           DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
   file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/include/irrKlang/lib/Win64/ikpMP3.dll
           DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/include/irrKlang/lib/Win64/irrKlang.dll
+          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/include/irrKlang/lib/Win64/ikpMP3.dll
+          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
 
 else()
 
