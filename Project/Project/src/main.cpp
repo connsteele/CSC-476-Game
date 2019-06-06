@@ -343,9 +343,39 @@ public:
 	}
 
 	void movementLogic() {
+
+        float followMoveSpd = 10.0f * deltaTime;
+
+        moveDir = vec3(0, 0, 0);
+
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_W) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += (camMove * followMoveSpd);
+        }
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_S) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += -(camMove * followMoveSpd);
+        }
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_A) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += cross(up, camMove) * followMoveSpd;
+        }
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_D) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += -(cross(up, camMove) * followMoveSpd);
+        }
+
+        if((glfwGetKey(windowManager->getHandle(), GLFW_KEY_SPACE) == GLFW_PRESS)  && canJump){
+            velocity = 7.0f;
+            canJump = false;
+        }
+
 		if(possessedActor)
-		{ 
-			float followMoveSpd = 10.0f * deltaTime;
+		{
 			float CurrentYPosition = possessedActor->position.y;
 			vec3 newPosition = possessedActor->position + moveDir;
 			newPosition.y = CurrentYPosition;//+ 0.1f;
@@ -454,43 +484,6 @@ public:
 		}
 		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
 		{
-		    
-		    //float FixedHeight = 0.1f; // Used to lock vertical position of models
-		    // possessedActor->position.y = 0.1f;
-
-			float CurrentYPosition = possessedActor->position.y;
-			moveDir = vec3(0, 0, 0);
-
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += (camMove * followMoveSpd);
-				moveKeyReleased = true;
-			}
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += -(camMove * followMoveSpd);
-				moveKeyReleased = true;
-			}
-			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += cross(up, camMove) * followMoveSpd;
-				moveKeyReleased = true;
-			}
-			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += -(cross(up, camMove) * followMoveSpd);
-				moveKeyReleased = true;
-			}
-
-			if(key == GLFW_KEY_SPACE  && canJump){
-			    velocity = 7.0f;
-			    canJump = false;
-				moveKeyReleased = false;
-			}
 
 		}
 		//else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
@@ -665,7 +658,7 @@ public:
             bulletStartPos = possessedActor->position;
             didHitObject = true;
 
-            if (HitObjects[minDistanceIndex]->team != teamNum && !isOverheadView) {
+            if (((HitObjects[minDistanceIndex]->team == 1 && teamNum == 2) || (HitObjects[minDistanceIndex]->team == 2 && teamNum == 1)) && !isOverheadView) {
 				DamagedPlayer = HitObjects[minDistanceIndex];
 				//if (HitObjects[minDistanceIndex]->health >= 1.0f)
 				//{
@@ -2169,28 +2162,29 @@ public:
 										}
 									}
 								}
+								else{
+                                    isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+                                    possessedBullet = NULL;
+                                    bullets.clear();
+                                    isBulletShot = false;
+                                    DamagedPlayer = NULL;
+                                    isOverheadView = true;
+                                    switchTurn();
+								}
 							}
+						}
+						else{
+						    possessedBullet = NULL;
+						    bullets.clear();
+						    isBulletShot = false;
+						    isOverheadView = true;
+						    switchTurn();
 						}
 
 
 						//DamagedPlayer = NULL; // is set down below
 						renderBulletObj = NULL;
 						didHitObject = false;
-
-						if (!isOverheadView)
-						{
-							switchTurn();
-						}
-
-						// Go to the overhead view if the player didnt die, otherwise go to death cam in render
-						if (DamagedPlayer->health > 0.0f)
-						{
-							isOverheadView = true;
-							isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-							possessedBullet = NULL;
-							bullets.clear();
-							isBulletShot = false;
-						}
 						
 					}
 				}
@@ -2713,32 +2707,31 @@ public:
 
 	void switchTurn() {
 		if (whoseTurn == 1) {
-			// if all units used clear array and allow them to be used again
-			if (numRobotUnits <= numUsedRobots) {
-				for(int i = 0; i < robotUnits.size(); i++){
-					robotUnits[i]->isUsed = false;
-				}
-				// robotUnits.clear();
-				numUsedRobots = 0;
-			}
 			// switch turn
 			whoseTurn = 2;
 		}
 		else if (whoseTurn == 2) {
-			// if all units used clear array and allow them to be used again
-			if (numAlienUnits <= numUsedAliens) {
-				
-				//Walkthrough used array to set bools back to unused
-				for(int i = 0; i < alienUnits.size(); i++){
-					alienUnits[i]->isUsed = false;
-				}
-				
-				// usedAlienUnits.clear();
-				numUsedAliens = 0;
-			}
 			// switch turn
 			whoseTurn = 1;
 		}
+
+        if (numRobotUnits <= numUsedRobots) {
+            for(int i = 0; i < robotUnits.size(); i++){
+                robotUnits[i]->isUsed = false;
+            }
+            // robotUnits.clear();
+            numUsedRobots = 0;
+        }
+        if (numAlienUnits <= numUsedAliens) {
+
+            //Walkthrough used array to set bools back to unused
+            for(int i = 0; i < alienUnits.size(); i++){
+                alienUnits[i]->isUsed = false;
+            }
+
+            // usedAlienUnits.clear();
+            numUsedAliens = 0;
+        }
 
 		// Commented out is done else where
 		//if (!isBulletShot) {
@@ -3024,6 +3017,7 @@ public:
 
 					// Goto the overhead view
 					isOverheadView = true;
+					switchTurn();
 					isCaptureCursor = !isCaptureCursor; // turn the cursor back on
 					// isBulletShot = false;
 				}
@@ -3125,15 +3119,11 @@ public:
 
 		if(possessedActor != NULL) {
             velocity += deltaTime * acceleration;
+            movementLogic();
         }
 
 		//Gravity Logic
 		ApplyGravity();
-
-		//FirstPerson Movement
-		if (updateMovement) {
-			movementLogic();
-		}
 
 		M->pushMatrix();
 		//checkAllGameObjects();
