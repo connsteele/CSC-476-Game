@@ -342,9 +342,39 @@ public:
 	}
 
 	void movementLogic() {
+
+        float followMoveSpd = 10.0f * deltaTime;
+
+        moveDir = vec3(0, 0, 0);
+
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_W) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += (camMove * followMoveSpd);
+        }
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_S) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += -(camMove * followMoveSpd);
+        }
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_A) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += cross(up, camMove) * followMoveSpd;
+        }
+        if (glfwGetKey(windowManager->getHandle(), GLFW_KEY_D) == GLFW_PRESS)
+        {
+            updateMovement = true;
+            moveDir += -(cross(up, camMove) * followMoveSpd);
+        }
+
+        if((glfwGetKey(windowManager->getHandle(), GLFW_KEY_SPACE) == GLFW_PRESS)  && canJump){
+            velocity = 7.0f;
+            canJump = false;
+        }
+
 		if(possessedActor)
-		{ 
-			float followMoveSpd = 10.0f * deltaTime;
+		{
 			float CurrentYPosition = possessedActor->position.y;
 			vec3 newPosition = possessedActor->position + moveDir;
 			newPosition.y = CurrentYPosition;//+ 0.1f;
@@ -453,43 +483,6 @@ public:
 		}
 		else if (!isOverheadView && (possessedActor)) // When possessing an actor the input keys will update its position
 		{
-		    
-		    //float FixedHeight = 0.1f; // Used to lock vertical position of models
-		    // possessedActor->position.y = 0.1f;
-
-			float CurrentYPosition = possessedActor->position.y;
-			moveDir = vec3(0, 0, 0);
-
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += (camMove * followMoveSpd);
-				moveKeyReleased = true;
-			}
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += -(camMove * followMoveSpd);
-				moveKeyReleased = true;
-			}
-			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += cross(up, camMove) * followMoveSpd;
-				moveKeyReleased = true;
-			}
-			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			{
-				updateMovement = true;
-				moveDir += -(cross(up, camMove) * followMoveSpd);
-				moveKeyReleased = true;
-			}
-
-			if(key == GLFW_KEY_SPACE  && canJump){
-			    velocity = 7.0f;
-			    canJump = false;
-				moveKeyReleased = false;
-			}
 
 		}
 		//else if (!camUpdate && isOverheadView) // --- If the camera is in overhead view
@@ -2166,6 +2159,7 @@ public:
 						// Go to the overhead view if the player didnt die, otherwise go to death cam in render
 						if (DamagedPlayer->health > 0.0f)
 						{
+						    DamagedPlayer = NULL;
 							isOverheadView = true;
 							isCaptureCursor = !isCaptureCursor; // turn the cursor back on
 							possessedBullet = NULL;
@@ -3105,15 +3099,11 @@ public:
 
 		if(possessedActor != NULL) {
             velocity += deltaTime * acceleration;
+            movementLogic();
         }
 
 		//Gravity Logic
 		ApplyGravity();
-
-		//FirstPerson Movement
-		if (updateMovement) {
-			movementLogic();
-		}
 
 		M->pushMatrix();
 		//checkAllGameObjects();
