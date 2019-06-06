@@ -1091,19 +1091,6 @@ public:
 	}
 
 	void initFBO(const std::string& resourceDirectory, int width, int height) {
-		//set up the shaders to blur the FBO decomposed just a placeholder pass thru now
-		FBOProg = make_shared<Program>();
-		FBOProg->setVerbose(true);
-		FBOProg->setShaderNames(resourceDirectory + "/tex_vert.glsl", resourceDirectory + "/tex_frag.glsl");
-		if (!FBOProg->init())
-		{
-			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
-			exit(1);
-		}
-		FBOProg->addUniform("texBuf");
-		FBOProg->addAttribute("vertPos");
-		FBOProg->addUniform("mode");
-
 		//create two frame buffer objects to toggle between
 		glGenFramebuffers(2, frameBuf);
 		glGenTextures(2, texBuf);
@@ -1268,6 +1255,19 @@ public:
 		ShadowProg->addUniform("MatDif");
 		ShadowProg->addUniform("MatSpec");
 		ShadowProg->addUniform("shine");
+
+		//set up the shaders to blur the FBO decomposed just a placeholder pass thru now
+		FBOProg = make_shared<Program>();
+		FBOProg->setVerbose(true);
+		FBOProg->setShaderNames(resourceDirectory + "/tex_vert.glsl", resourceDirectory + "/tex_frag.glsl");
+		if (!FBOProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		FBOProg->addUniform("texBuf");
+		FBOProg->addAttribute("vertPos");
+		FBOProg->addUniform("mode");
 
 		initShadow();
 		initSky(resourceDirectory);
@@ -3368,9 +3368,9 @@ public:
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
 
-		//regardless unbind the FBO 
+		/*//regardless unbind the FBO 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 
 		/* code to write out the FBO (texture) just once */
 		if (FirstTime) {

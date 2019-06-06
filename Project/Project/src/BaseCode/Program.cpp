@@ -102,7 +102,7 @@ void Program::bind()
 
 void Program::unbind()
 {
-	std::cout << "Unbound shader " << vShaderName << " and " << fShaderName << std::endl;
+	//std::cout << "Unbound shader " << vShaderName << " and " << fShaderName << std::endl;
 	CHECKED_GL_CALL(glUseProgram(0));
 }
 
