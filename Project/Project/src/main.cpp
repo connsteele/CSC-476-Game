@@ -56,6 +56,7 @@ mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
 GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White;
+GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
 
 // shadow stuff
@@ -1506,6 +1507,24 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
+
+		// Loop throught the explosion textures and bind them
+		glGenTextures(54, Texs_Boom); // generate the textures
+		for (int ii = 0; ii < 54; ii++)
+		{
+			str = resourceDirectory + "/images/explosion/boom_" + to_string(ii) + ".png";
+			strcpy(filepath, str.c_str()); // copy the string into the char array
+			dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+			
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, Texs_Boom[ii]);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
 
 
 		//---  Load the image of the map file
