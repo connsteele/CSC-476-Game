@@ -47,6 +47,7 @@ int p1Collisions = 0;
 shared_ptr<GameObject> possessedActor = NULL;
 shared_ptr<GameObject> possessedBullet = NULL;
 
+
 //--- Variables for players bbox 
 GLuint p1_vbo_vertices;
 GLuint p1_ibo_elements;
@@ -2153,7 +2154,7 @@ public:
 						}
 
 
-						DamagedPlayer = NULL;
+						//DamagedPlayer = NULL; // is set down below
 						renderBulletObj = NULL;
 						didHitObject = false;
 
@@ -2162,14 +2163,19 @@ public:
 							switchTurn();
 						}
 
-						// Go to the overhead view
-						isOverheadView = true;
-						isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-						possessedBullet = NULL;
-						bullets.clear();
-						isBulletShot = false;
+						// Go to the overhead view if the player didnt die, otherwise go to death cam in render
+						if (DamagedPlayer->health > 0.0f)
+						{
+							isOverheadView = true;
+							isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+							possessedBullet = NULL;
+							bullets.clear();
+							isBulletShot = false;
+						}
+						
 					}
 				}
+				// --- Bullet missed so remove it after it flies a certain distance
 				else {
 					if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
 						renderBulletObj = NULL;
@@ -2715,12 +2721,13 @@ public:
 			whoseTurn = 1;
 		}
 
-		//Snap user back to overhead view
-		if (!isBulletShot) {
-			isOverheadView = true; // This gets set in bullet shit now
-			isCaptureCursor = !isCaptureCursor; // turn the cursor back on // This gets set in bullet shit now
-			possessedBullet = NULL;
-		}
+		// Commented out is done else where
+		//if (!isBulletShot) {
+		//	isOverheadView = true; // This gets set in bullet shit now
+		//	isCaptureCursor = !isCaptureCursor; // turn the cursor back on // This gets set in bullet shit now
+		//	possessedBullet = NULL;
+		//}
+
 		firstPersonUI.setRender(false);
 		overViewUI.setRender(true);
 		//reset turn timer
@@ -2973,7 +2980,36 @@ public:
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView) // Possession
 		{
-			if (possessedBullet)
+			if (DamagedPlayer && (DamagedPlayer->health <= 0.0f)) // Death cam for a set amount of time then cut away
+			{
+				static float deathCamTimer = 3.0f;
+
+				if (deathCamTimer >= 0.0f)
+				{
+					deathCamTimer -= 1.0f * deltaTime;
+
+					curCamEye = DamagedPlayer->position + vec3(0.0f, 6.0f, 0.0f);
+					ox = 0.1f;
+					oy = -1.0f;
+					oz = 0.0f;
+					vec3 lookDir = vec3(ox, oy, oz);
+
+					curCamCenter = curCamEye + lookDir;
+					camMove = vec3(ox, oy, oz);
+				}
+				else
+				{
+					deathCamTimer = 3.0f;
+					DamagedPlayer = NULL;
+
+					// Goto the overhead view
+					isOverheadView = true;
+					isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+					// isBulletShot = false;
+				}
+
+			}
+			else if (possessedBullet)
 			{
 				curCamEye = lastBulletPos + vec3(0.0f, 6.0f, 0.0f);;
 				// curCamEye = possessedBullet->position + vec3(0.0f, 6.0f, 0.0f);
