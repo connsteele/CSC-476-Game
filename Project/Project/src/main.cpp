@@ -3001,6 +3001,7 @@ public:
 				{
 					deathCamTimer = 3.0f;
 					DamagedPlayer = NULL;
+					possessedBullet = NULL;
 
 					// Goto the overhead view
 					isOverheadView = true;
