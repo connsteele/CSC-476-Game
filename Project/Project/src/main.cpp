@@ -2139,17 +2139,14 @@ public:
 			renderTerrain(M, P, V, ShadowProg, true);
 			// render all the actors in the scene
 			// Render all objs in the terrain
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
 
 			currentShader = NULL;
 			ShadowProg->unbind();
 		}
-		
-		//render SkyBox
-		renderSkybox(P, M);
 	}
 
 
@@ -3030,7 +3027,7 @@ public:
 		//print ID of current shader
 		int progNum;
 		glGetIntegerv(GL_CURRENT_PROGRAM, &progNum);
-		printf("Shader %d bound\n", progNum);
+		//printf("Shader %d bound\n", progNum);
 
 
 		// example applying of 'drawing' the FBO texture
@@ -3334,6 +3331,33 @@ public:
 
 		renderUI();
 
+		/*//regardless unbind the FBO 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
+
+		/* code to write out the FBO (texture) just once */
+		if (FirstTime) {
+			//assert(GLTextureWriter::WriteImage(texBuf[0], "Texture_output.png"));
+			FirstTime = 0;
+			printf("first\n");
+		}
+
+		/* TODO - add code so that you can call the blur as much as needed */
+		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Blur(texBuf[1]);
+		/*for (int i = 0; i < 17; i++) {
+			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[(i + 1) % 2]);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			Blur(texBuf[i % 2]);
+		}*/
+
+		/* now draw the actual output  to the default framebuffer - ie display */
+		/* note the current base code is just using one FBO and texture */
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Blur(texBuf[0]);
+
+
 		//VFC DEBUG MINIMAP
 		if (DEBUG_CULL) {
 			/* draw the culled scene from a top down camera */
@@ -3365,34 +3389,11 @@ public:
 
 		}
 
+		//render SkyBox
+		renderSkybox(P, M);
+
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
-
-		/*//regardless unbind the FBO 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-
-		/* code to write out the FBO (texture) just once */
-		if (FirstTime) {
-			//assert(GLTextureWriter::WriteImage(texBuf[0], "Texture_output.png"));
-			FirstTime = 0;
-			printf("first\n");
-		}
-
-		/* TODO - add code so that you can call the blur as much as needed */
-		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		Blur(texBuf[1]);
-		/*for (int i = 0; i < 17; i++) {
-			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[(i + 1) % 2]);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			Blur(texBuf[i % 2]);
-		}*/
-
-		/* now draw the actual output  to the default framebuffer - ie display */
-		/* note the current base code is just using one FBO and texture */
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		Blur(texBuf[0]);
 	}
 
 };
