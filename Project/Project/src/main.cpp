@@ -2159,7 +2159,6 @@ public:
 						// Go to the overhead view if the player didnt die, otherwise go to death cam in render
 						if (DamagedPlayer->health > 0.0f)
 						{
-						    DamagedPlayer = NULL;
 							isOverheadView = true;
 							isCaptureCursor = !isCaptureCursor; // turn the cursor back on
 							possessedBullet = NULL;
