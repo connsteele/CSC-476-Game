@@ -88,6 +88,8 @@ float headRot = 0.0f, deathRot = 0.0f, deathTranslation = 0.0f;
 vector<float> deathRots(8, 0.0f); // Initialize a vector of size 8 with all 0.0f
 vector<float> deathTranslations(8, 0.0f); // Initialize a vector of size 8 with all 0.0f
 bool headBob = false; // controls what way to bob head
+// Var that controls animation of explosions
+vector<float> boomIndices(8, 0.0f);
 
 
 
@@ -2297,6 +2299,8 @@ public:
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					roboBody->draw(shader);
 
+
+
 					// Head
 					M->pushMatrix();
 					// M->loadIdentity();
@@ -2433,6 +2437,31 @@ public:
 					M->rotate(deathRots[i], vec3(1.0f, 0.0f, 0.0f));
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					roboBody->draw(shader);
+
+					shader->unbind();
+					// Render Explosion
+					ShadowProg->bind();
+					M->pushMatrix();
+					M->scale(4.0f);
+					SetMaterial(5, ShadowProg);
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Texs_Boom[ int(boomIndices[i]) ]  );
+					glUniformMatrix4fv(ShadowProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniform3f(ShadowProg->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+					glUniform3f(ShadowProg->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					if (boomIndices[i] < 54.0)
+					{
+						boomIndices[i] += 0.25f;
+					}					
+					cube->draw(ShadowProg);
+					M->popMatrix();
+					ShadowProg->unbind();
+					shader->bind();
+
+					// Rebind the other texture
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
 
 					// Head
 					M->pushMatrix();
@@ -2995,6 +3024,8 @@ public:
 			if (DamagedPlayer && (DamagedPlayer->health <= 0.0f)) // Death cam for a set amount of time then cut away
 			{
 				static float deathCamTimer = 3.0f;
+				//static float explosion counter;
+				static bool createExplosion = true;
 
 				if (deathCamTimer >= 0.0f)
 				{
@@ -3014,6 +3045,7 @@ public:
 					deathCamTimer = 3.0f;
 					DamagedPlayer = NULL;
 					possessedBullet = NULL;
+					createExplosion = true; // get ready to spawn an explosion next time
 
 					// Goto the overhead view
 					isOverheadView = true;
@@ -3133,6 +3165,9 @@ public:
 
 		// renderShadows wrap other render calls so this renders most the world
 		renderShadows(M, P);
+
+
+
 
 		// Render a bullet
 		prog->bind();
