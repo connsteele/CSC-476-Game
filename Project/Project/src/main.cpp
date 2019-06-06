@@ -211,6 +211,10 @@ public:
 
 	// Our shader program
 	std::shared_ptr<Program> prog, texProg, skyProg;
+	std::shared_ptr<Program> FBOProg;
+
+	//for debugging mutiple bound shader issues
+	std::shared_ptr<Program> currentShader;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -259,7 +263,7 @@ public:
 	vec4 Left, Right, Bottom, Top, Near, Far;
 	vec4 planes[6];
 
-	// bool FirstTime = true;
+	bool FirstTime = true;
 
 
 	float cTheta = 0;
@@ -1086,6 +1090,40 @@ public:
 		cubemapTexture = loadCubemap(faces);
 	}
 
+	void initFBO(const std::string& resourceDirectory, int width, int height) {
+		//set up the shaders to blur the FBO decomposed just a placeholder pass thru now
+		FBOProg = make_shared<Program>();
+		FBOProg->setVerbose(true);
+		FBOProg->setShaderNames(resourceDirectory + "/tex_vert.glsl", resourceDirectory + "/tex_frag.glsl");
+		if (!FBOProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		FBOProg->addUniform("texBuf");
+		FBOProg->addAttribute("vertPos");
+		FBOProg->addUniform("mode");
+
+		//create two frame buffer objects to toggle between
+		glGenFramebuffers(2, frameBuf);
+		glGenTextures(2, texBuf);
+		glGenRenderbuffers(1, &depthBuf);
+		createFBO(frameBuf[0], texBuf[0]);
+
+		//set up depth necessary since we are rendering a mesh that needs depth test
+		glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
+
+		//more FBO set up
+		GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers);
+
+		//create another FBO so we can swap back and forth
+		createFBO(frameBuf[1], texBuf[1]);
+		//this one doesn't need depth
+	}
+
 	void init(const std::string& resourceDirectory)
 	{
 		int width, height;
@@ -1233,6 +1271,8 @@ public:
 
 		initShadow();
 		initSky(resourceDirectory);
+
+		initFBO(resourceDirectory, width, height);
 	}
 	
 	void initPlayerBbox()
@@ -1909,6 +1949,7 @@ public:
 		//camLoc = curCamEye;
 
 		prog->bind();
+		currentShader = prog;
 
 		M->pushMatrix();
 		M->loadIdentity();
@@ -1931,6 +1972,7 @@ public:
 		M->popMatrix();
 
 		prog->unbind();
+		currentShader = NULL;
 
 		return;
 	}
@@ -2001,6 +2043,7 @@ public:
 		//set up shadow shader
 		//render scene
 		DepthProg->bind();
+		currentShader = prog;
 
 		mat4 LP = SetOrthoMatrix(DepthProg);
 		mat4 LV = SetLightView(DepthProg, g_light, vec3(0, 0, 0), vec3(0, 1, 0));
@@ -2014,6 +2057,8 @@ public:
 		
 
 		DepthProg->unbind();
+		currentShader = NULL;
+
 		glCullFace(GL_BACK);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -2029,6 +2074,8 @@ public:
 			//perspective
 			if (GEOM_DEBUG) {
 				DepthProgDebug->bind();
+				currentShader = prog;
+
 				//render scene from light's point of view
 				mat4 LP = SetOrthoMatrix(DepthProgDebug);
 				//mat4 LV = SetLightView(DepthProgDebug, vec3(1,4,1), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -2043,10 +2090,14 @@ public:
 				renderWeapons(M, P, V, DepthProgDebug, false);
 
 				DepthProgDebug->unbind();
+				currentShader = NULL;
+
 			}
 			else {
 				//actually draw the light depth map
 				DebugProg->bind();
+				currentShader = prog;
+
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, depthMap);
 				glUniform1i(DebugProg->getUniform("texBuf"), 0);
@@ -2056,12 +2107,16 @@ public:
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 				glDisableVertexAttribArray(0);
 				DebugProg->unbind();
+				currentShader = NULL;
+
 			}
 		}
 		else {
 			//now render the scene like normal
 			//set up shadow shader
 			ShadowProg->bind();
+			currentShader = prog;
+
 			/* also set up light depth map */
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -2074,14 +2129,22 @@ public:
 			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
 
 			// Actually render the models with shadows cast on them
+			//set up to render to buffer
+			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
+			// Clear framebuffer.
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			renderSceneActors(M, P, V, ShadowProg, true);
 			renderWeapons(M, P, V, ShadowProg, true);
 			SetMaterial(1, ShadowProg);
 			renderTerrain(M, P, V, ShadowProg, true);
 			// render all the actors in the scene
 			// Render all objs in the terrain
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
+
+			currentShader = NULL;
 			ShadowProg->unbind();
 		}
 		
@@ -2328,10 +2391,13 @@ public:
 					M->popMatrix();
 					
 					shader->unbind();
+					currentShader = NULL;
 
 					// ---- Draw UI elements above the player
 					// Bind a white texture
 					prog->bind();
+					currentShader = prog;
+
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, Tex_White);
 					//SetMaterial(5, prog);
@@ -2392,8 +2458,11 @@ public:
 					}*/
 
 					prog->unbind();
+					currentShader = NULL;
 
 					shader->bind();
+					currentShader = prog;
+
 
 					M->popMatrix(); // Pop the Matrix for the whole body
 				}
@@ -2927,6 +2996,8 @@ public:
 		V->pushMatrix();
 		V->lookAt(curCamEye, curCamCenter, up);
 		skyProg->bind();
+		currentShader = prog;
+
 
 		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 		glUniformMatrix4fv(skyProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
@@ -2942,6 +3013,44 @@ public:
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS); // set depth function back to default
 		skyProg->unbind();
+		currentShader = NULL;
+
+	}
+
+	/* To call the blur on the specificed texture */
+/* TODO: fill in with call to appropriate shader(s) to complete the blur  */
+	void Blur(GLuint inTex) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, inTex);
+
+		if (currentShader) {
+			printf("Warning! Shader already bound!\n");
+		}
+
+		//print ID of current shader
+		int progNum;
+		glGetIntegerv(GL_CURRENT_PROGRAM, &progNum);
+		printf("Shader %d bound\n", progNum);
+
+
+		// example applying of 'drawing' the FBO texture
+		FBOProg->bind();
+		currentShader = prog;
+
+		glUniform1i(FBOProg->getUniform("texBuf"), 0);
+
+		if (possessedBullet != NULL)
+			glUniform1i(FBOProg->getUniform("mode"), 1);
+		else
+			glUniform1i(FBOProg->getUniform("mode"), 0);
+
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+		FBOProg->unbind();
+		currentShader = NULL;
 	}
 
 	void render()
@@ -3091,8 +3200,8 @@ public:
 		P->perspective(45.0f, aspect, 0.01f, 200.0f); // First arguement is Camera FOV, only 45 and 90 seem to be working well, last arguement is culling distance
 
 		/*Draw the actual scene*/
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		M->pushMatrix(); // Matrix for the Scene		
 		
@@ -3126,8 +3235,12 @@ public:
 
 		// Render a bullet
 		prog->bind();
+		currentShader = prog;
+
 		renderBullet(M, P, prog);
 		prog->unbind();
+		currentShader = NULL;
+
 		//renderSceneActors(M, P, ShadowProg); // render all the actors in the scene
 		//renderTerrain(M, P, ShadowProg); // Render all objs in the terrain
 		//renderWeapons(M, P, ShadowProg);
@@ -3145,6 +3258,8 @@ public:
 			{
 				M->pushMatrix();
 				prog->bind();
+				currentShader = prog;
+
 				M->translate(vec3(0.8f, -0.8f, -1.9f));
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
@@ -3158,6 +3273,8 @@ public:
 			{
 				M->pushMatrix();
 				prog->bind();
+				currentShader = prog;
+
 				M->translate(vec3(0.5f, -0.3f, -0.9f));
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
@@ -3211,11 +3328,9 @@ public:
 			M->popMatrix();
 
 			prog->unbind();
+			currentShader = NULL;
 
 		}
-
-		//render SkyBox
-		//renderSkybox(P, M);
 
 		renderUI();
 
@@ -3226,6 +3341,8 @@ public:
 			glViewport(0, 50, 500, 500);
 
 			prog->bind();
+			currentShader = prog;
+
 
 			//SetOrthoMatrix(prog);
 			P->pushMatrix();
@@ -3244,11 +3361,38 @@ public:
 
 			P->popMatrix();
 			prog->unbind();
+			currentShader = NULL;
 
 		}
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
+
+		//regardless unbind the FBO 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		/* code to write out the FBO (texture) just once */
+		if (FirstTime) {
+			//assert(GLTextureWriter::WriteImage(texBuf[0], "Texture_output.png"));
+			FirstTime = 0;
+			printf("first\n");
+		}
+
+		/* TODO - add code so that you can call the blur as much as needed */
+		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Blur(texBuf[1]);
+		/*for (int i = 0; i < 17; i++) {
+			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[(i + 1) % 2]);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			Blur(texBuf[i % 2]);
+		}*/
+
+		/* now draw the actual output  to the default framebuffer - ie display */
+		/* note the current base code is just using one FBO and texture */
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Blur(texBuf[0]);
 	}
 
 };
