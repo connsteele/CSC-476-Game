@@ -2134,82 +2134,83 @@ public:
 				M->popMatrix();
 
 
-				// -- Hit detection
-				if (didHitObject) {
 
-					if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
-
-						if (DamagedPlayer != NULL) {
-							if (DamagedPlayer->health >= 1.0f)
-							{
-								DamagedPlayer->health -= 1.0f;
-
-								// Check to see if a units is dead, if it is remove it from the game
-								if (DamagedPlayer->health <= 0.0f) {
-									DamagedPlayer->beenShot = true;
-									if (DamagedPlayer->team == 2) {
-										numAlienUnits--;
-										if (DamagedPlayer->isUsed)
-										{
-											numUsedAliens--;
-										}
-									}
-									else {
-										numRobotUnits--;
-										if (DamagedPlayer->isUsed)
-										{
-											numUsedRobots--;
-										}
-									}
-								}
-								else{
-                                    isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-                                    possessedBullet = NULL;
-                                    bullets.clear();
-                                    isBulletShot = false;
-                                    DamagedPlayer = NULL;
-                                    isOverheadView = true;
-                                    switchTurn();
-								}
-							}
-						}
-						else{
-						    possessedBullet = NULL;
-						    bullets.clear();
-						    isBulletShot = false;
-						    isOverheadView = true;
-						    switchTurn();
-						}
-
-
-						//DamagedPlayer = NULL; // is set down below
-						renderBulletObj = NULL;
-						didHitObject = false;
-						
-					}
-				}
-				// --- Bullet missed so remove it after it flies a certain distance
-				else {
-					if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
-						renderBulletObj = NULL;
-
-						// Go back to the overhead view after shooting
-						if (!isOverheadView)
-						{
-							switchTurn();
-						}
-
-						// Go to the overhead view
-						isOverheadView = true;
-						isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-						possessedBullet = NULL;
-						bullets.clear();
-						isBulletShot = false;
-
-						
-					}
-				}
 			}
+            // -- Hit detection
+            if (didHitObject) {
+
+                if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
+
+                    if (DamagedPlayer != NULL) {
+                        if (DamagedPlayer->health >= 1.0f)
+                        {
+                            DamagedPlayer->health -= 1.0f;
+
+                            // Check to see if a units is dead, if it is remove it from the game
+                            if (DamagedPlayer->health <= 0.0f) {
+                                DamagedPlayer->beenShot = true;
+                                if (DamagedPlayer->team == 2) {
+                                    numAlienUnits--;
+                                    if (DamagedPlayer->isUsed)
+                                    {
+                                        numUsedAliens--;
+                                    }
+                                }
+                                else {
+                                    numRobotUnits--;
+                                    if (DamagedPlayer->isUsed)
+                                    {
+                                        numUsedRobots--;
+                                    }
+                                }
+                            }
+                            else{
+                                isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+                                possessedBullet = NULL;
+                                bullets.clear();
+                                isBulletShot = false;
+                                DamagedPlayer = NULL;
+                                isOverheadView = true;
+                                switchTurn();
+                            }
+                        }
+                    }
+                    else{
+                        possessedBullet = NULL;
+                        bullets.clear();
+                        isBulletShot = false;
+                        isOverheadView = true;
+                        switchTurn();
+                    }
+
+
+                    //DamagedPlayer = NULL; // is set down below
+                    renderBulletObj = NULL;
+                    didHitObject = false;
+
+                }
+            }
+                // --- Bullet missed so remove it after it flies a certain distance
+            else {
+                if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
+                    renderBulletObj = NULL;
+
+                    // Go back to the overhead view after shooting
+                    if (!isOverheadView)
+                    {
+                        switchTurn();
+                    }
+
+                    // Go to the overhead view
+                    isOverheadView = true;
+                    isCaptureCursor = !isCaptureCursor; // turn the cursor back on
+                    possessedBullet = NULL;
+                    bullets.clear();
+                    isBulletShot = false;
+
+
+                }
+            }
 
 
 		}
