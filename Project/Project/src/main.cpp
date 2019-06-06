@@ -110,7 +110,7 @@ vec3 moveDir = vec3(0,0,0);
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 1000; // use 11
+int turnLength = 12; // use 11
 
 bool isCaptureCursor = false;
 
@@ -346,7 +346,7 @@ public:
 
 	void movementLogic() {
 
-        float followMoveSpd = 10.0f * deltaTime;
+        float followMoveSpd = 5.0f * deltaTime;
 
         moveDir = vec3(0, 0, 0);
 
@@ -372,7 +372,7 @@ public:
         }
 
         if((glfwGetKey(windowManager->getHandle(), GLFW_KEY_SPACE) == GLFW_PRESS)  && canJump){
-            velocity = 7.0f;
+            velocity = 6.0f;
             canJump = false;
         }
 
@@ -2440,20 +2440,21 @@ public:
 					roboBody->draw(shader);
 
 					shader->unbind();
-					// Render Explosion
+					// ----  Render Explosion
 					ShadowProg->bind();
 					M->pushMatrix();
 					M->scale(4.0f);
 					SetMaterial(5, ShadowProg);
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, Texs_Boom[ int(boomIndices[i]) ]  );
+					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					glUniformMatrix4fv(ShadowProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(ShadowProg->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 					glUniform3f(ShadowProg->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
 					if (boomIndices[i] < 54.0)
 					{
-						boomIndices[i] += 0.25f;
+						boomIndices[i] += 0.2f;
 					}					
 					cube->draw(ShadowProg);
 					M->popMatrix();
@@ -2889,6 +2890,7 @@ public:
 				velocity = 0.0f;
 				canJump = true;
 				if(readyToSwitch == true){
+					isOverheadView = true;
 				    switchTurn();
 				}
 			}
@@ -3326,7 +3328,7 @@ int main(int argc, char **argv)
 	application->init(resourceDir);
 	application->initGeom(resourceDir);
 	application->initUI(windowManager->getHandle());
-	// application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE); // Play sweet sweet music
+	application->SoundEngine->play2D("../resources/breakout.mp3", GL_TRUE); // Play sweet sweet music
 
 	// Loop until the user closes the window.
 	while (!glfwWindowShouldClose(windowManager->getHandle()))
