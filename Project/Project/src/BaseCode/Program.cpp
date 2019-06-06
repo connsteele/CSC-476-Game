@@ -103,6 +103,7 @@ void Program::bind()
 void Program::unbind()
 {
 	CHECKED_GL_CALL(glUseProgram(0));
+	//std::cout << "Unbound " << vShaderName << " and " << fShaderName << std::endl;
 }
 
 void Program::addAttribute(const std::string &name)

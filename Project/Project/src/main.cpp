@@ -21,6 +21,7 @@
 #include "ourCoreFuncs.h"
 #include "UIController.h"
 #include "Weapon.h"
+#include "Particle.h"
 #include "irrKlang/include/irrKlang.h"
 #pragma comment(lib, "irrKlang.lib")
 
@@ -139,6 +140,9 @@ unsigned int skyboxVAO, skyboxVBO;
 //Skybox texture
 unsigned int cubemapTexture;
 
+//particle texture
+unsigned int particleTexture;
+
 //Skybox image files
 vector<std::string> faces
 {
@@ -210,7 +214,7 @@ public:
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog, texProg, skyProg;
+	std::shared_ptr<Program> prog, texProg, skyProg, particleProg;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -260,7 +264,6 @@ public:
 	vec4 planes[6];
 
 	// bool FirstTime = true;
-
 
 	float cTheta = 0;
 	bool mouseDown = false;
@@ -1009,6 +1012,55 @@ public:
 		}
 	}
 
+	ParticleGenerator   *particlesGenerator;
+	void initParticles(const std::string& resourceDirectory) {
+		//particle Shader setup
+		particleProg = make_shared<Program>();
+		particleProg->setVerbose(true);
+		particleProg->setShaderNames(resourceDirectory + "/particle_vert.glsl", resourceDirectory + "/particle_frag.glsl");
+		if (!particleProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		particleProg->addUniform("projection");
+		particleProg->addUniform("offset");
+		particleProg->addUniform("color");
+		particleProg->addUniform("sprite");
+
+		//load particle texture
+		unsigned int textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_2D, textureID);
+
+		int width, height, nrChannels;
+		const char * filename = "../resources/particle.png";
+		unsigned char *data = stbi_load(filename, &width, &height, &nrChannels, 3);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap texture failed to load at path: " << filename << std::endl;
+			stbi_image_free(data);
+		}
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		particleTexture = textureID;
+
+		particlesGenerator = new ParticleGenerator(
+			particleProg,
+			particleTexture,
+			500
+		);
+	}
+
 	void initSky(const std::string& resourceDirectory) {
 		skyProg = make_shared<Program>();
 		skyProg->setVerbose(true);
@@ -1233,6 +1285,7 @@ public:
 
 		initShadow();
 		initSky(resourceDirectory);
+		initParticles(resourceDirectory);
 	}
 	
 	void initPlayerBbox()
@@ -2089,8 +2142,6 @@ public:
 		renderSkybox(P, M);
 	}
 
-
-
 	void renderBullet(shared_ptr<MatrixStack> &M, shared_ptr<MatrixStack> &P, shared_ptr<Program> shader)
 	{
 
@@ -2105,7 +2156,18 @@ public:
 				M->pushMatrix();
 				M->loadIdentity();
 
-				SetMaterial(1, shader);
+				double dt = 0.01f;
+				shader->unbind();
+				//render particle trail
+				particleProg->bind();
+				glUniformMatrix4fv(particleProg->getUniform("projection"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				particlesGenerator->Update(dt, bullets[i], 2, glm::vec3(1 / 2));
+				particlesGenerator->Draw();
+				particleProg->unbind();
+				shader->bind();
+				printf("bullet pos : {%f, %f, %f}", bullets[i]->position.x, bullets[i]->position.y, bullets[i]->position.z);
+
+				SetMaterial(0, shader);
 
 				bullets[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 
@@ -2120,6 +2182,8 @@ public:
 				lastBulletPos = bullets[i]->position; // Save the position of the bullet
 
 				M->popMatrix();
+
+
 
 
 				// -- Hit detection
