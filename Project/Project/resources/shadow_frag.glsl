@@ -1,6 +1,7 @@
 #version 330 core
 uniform sampler2D Texture0;
 uniform sampler2D shadowDepth;
+uniform samplerCube skyBox;
 
 uniform vec3 eye;
 uniform vec3 lightSource;
@@ -96,7 +97,10 @@ void main() {
 
 	//calc h
 	vec3 v = normalize(eye - in_struct.fPos); //use eye or camera
+	vec3 vsky = normalize(in_struct.fPos - eye); // For use in environment mapping
 	vec3 h = normalize(v + lightvec );
+
+	vec3 r = reflect(vsky, normalize(in_struct.fragNor)); // For use in environment mapping
    
    
 	vec3 ka = MatAmb;
@@ -113,7 +117,8 @@ void main() {
 
 	Shade = TestShadow(in_struct.fPosLS);
 
-	Outcolor = amb*(texColor0*AmbColor) + (1.0-Shade)*texColor0*MatColor*BaseColor;
-	//Outcolor = vec4(vec3(1,1,1) * (1.0-Shade), 1);
+	// Clamp our output color to between 0.0 and 1.0
+	Outcolor = clamp( amb*(texColor0*AmbColor) + (1.0-Shade) * texColor0 * MatColor * BaseColor * vec4(texture(skyBox, r).rgb, 1.0), 0.0, 1.0);
+	//Outcolor = vec4(texture(skyBox, r).rgb, 1.0); // For use in environment mapping
 }
 

@@ -1226,6 +1226,7 @@ public:
 		ShadowProg->addUniform("MatDif");
 		ShadowProg->addUniform("MatSpec");
 		ShadowProg->addUniform("shine");
+		ShadowProg->addUniform("skyBox");
 
 		initShadow();
 		initSky(resourceDirectory);
@@ -2073,7 +2074,7 @@ public:
 			}
 		}
 		else {
-			//now render the scene like normal
+			// --- render the scene like normal
 			//set up shadow shader
 			ShadowProg->bind();
 			/* also set up light depth map */
@@ -2081,6 +2082,13 @@ public:
 			glBindTexture(GL_TEXTURE_2D, depthMap);
 			glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
 			glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
+
+			/*Set up skybox for environment mapping*/
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+			glUniform1i(ShadowProg->getUniform("skyBox"), 2);
+
+
 			//render scene
 			SetProjectionMatrix(ShadowProg);
 			//attemp to set V matrix using our cam setup
@@ -2119,7 +2127,7 @@ public:
 				M->pushMatrix();
 				M->loadIdentity();
 
-				SetMaterial(1, shader);
+				SetMaterial(2, shader);
 
 				bullets[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 
