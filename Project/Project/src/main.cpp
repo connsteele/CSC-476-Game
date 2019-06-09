@@ -213,7 +213,7 @@ public:
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog, texProg, skyProg;
+	std::shared_ptr<Program> prog, texProg, skyProg, FBOProg;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -261,9 +261,6 @@ public:
 	bool DEBUG_CULL = false;
 	vec4 Left, Right, Bottom, Top, Near, Far;
 	vec4 planes[6];
-
-	// bool FirstTime = true;
-
 
 	float cTheta = 0;
 	bool mouseDown = false;
@@ -1082,6 +1079,28 @@ public:
 		cubemapTexture = loadCubemap(faces);
 	}
 
+	void initFBO(const std::string& resourceDirectory, int width, int height) {
+		//generate 2 frame buffer objects to toggle between
+		glGenFramebuffers(2, frameBuf);
+		glGenTextures(2, texBuf);
+		glGenRenderbuffers(1, &depthBuf);
+		createFBO(frameBuf[0], texBuf[0]);
+
+		//set up depth necessary since we are rendering a mesh that needs to depth test
+		glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
+
+		//more FBO setup
+		GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers);
+
+		//create another FBO to swap back and forth
+		createFBO(frameBuf[1], texBuf[1]);
+		//doesn't need depth
+	}
+
+
 	void init(const std::string& resourceDirectory)
 	{
 		int width, height;
@@ -1228,8 +1247,20 @@ public:
 		ShadowProg->addUniform("shine");
 		ShadowProg->addUniform("skyBox");
 
+		//set up the shader to blur the FBO
+		FBOProg = make_shared<Program>();
+		FBOProg->setVerbose(true);
+		FBOProg->setShaderNames(resourceDirectory + "/tex_vert.glsl", resourceDirectory + "tex_frag.glsl");
+		if (!FBOProg->init()) {
+			std::cerr << "One or more shaders failed to comple...exiting!" << std::endl;
+		}
+		FBOProg->addUniform("texBuf");
+		FBOProg->addAttribute("vertPos");
+		FBOProg->addUniform("mode");
+
 		initShadow();
 		initSky(resourceDirectory);
+		initFBO(resourceDirectory, width, height);
 	}
 	
 	void initPlayerBbox()
@@ -2076,6 +2107,12 @@ public:
 		else {
 			// --- render the scene like normal
 			//set up shadow shader
+			//render to frame buffer
+			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			renderSkybox(P, M);
+
 			ShadowProg->bind();
 			/* also set up light depth map */
 			glActiveTexture(GL_TEXTURE1);
@@ -2108,7 +2145,7 @@ public:
 		}
 		
 		//render SkyBox
-		renderSkybox(P, M);
+		//renderSkybox(P, M);
 	}
 
 
@@ -2983,6 +3020,7 @@ public:
 		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 		glUniformMatrix4fv(skyProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(skyProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+		//allign the sun in the skybox to where light is coming from
 		M->rotate(-2.0f, vec3(0.0f, 1.0f, 0.0f));
 		glUniformMatrix4fv(skyProg->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 		// skybox cube
@@ -2994,6 +3032,30 @@ public:
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS); // set depth function back to default
 		skyProg->unbind();
+		//rotate the Model matrix back
+		M->rotate(2.0f, vec3(0.0f, 1.0f, 0.0f));
+
+	}
+
+	void Blur(GLuint inTex) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, inTex);
+
+		FBOProg->bind();
+		glUniform1i(FBOProg->getUniform("texBuf"), 0);
+
+		if (possessedBullet)
+			glUniform1i(FBOProg->getUniform("mode"), 1);
+
+		else
+			glUniform1i(FBOProg->getUniform("mode"), 0);
+
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+		FBOProg->unbind();
 	}
 
 	void render()
@@ -3152,7 +3214,6 @@ public:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		M->pushMatrix(); // Matrix for the Scene		
-		
 		// renderGroundPlane(M, P, isOverheadView); //draw the ground plane
 
 		//acceleration = -9.8f;
@@ -3270,10 +3331,15 @@ public:
 
 		}
 
-		//render SkyBox
-		//renderSkybox(P, M);
+		//renderUI();
 
-		renderUI();
+		//FBO stuff
+		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Blur(texBuf[1]);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Blur(texBuf[0]);
 
 		//VFC DEBUG MINIMAP
 		if (DEBUG_CULL) {
@@ -3302,6 +3368,7 @@ public:
 			prog->unbind();
 
 		}
+		renderSkybox(P, M);
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
