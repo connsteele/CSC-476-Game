@@ -211,6 +211,10 @@ public:
 	shared_ptr<GameObject> DamagedPlayer = NULL;
 	//Damage done to player
 	float DamageDone = 0.0f;
+	//Dont switch turn if weapon fired
+	bool weaponFired = false;
+	//Check if player was damaged but not killed
+	bool DamagedNotDead = false;
 
 	//Player Gravity Variables
 	float acceleration = -9.8f;
@@ -586,13 +590,13 @@ public:
             vec3 ray_wor = GenerateRay(posX, posY); // Generate ray from mouse click
 
 
-			if(whoseTurn == 1) {
+			if(whoseTurn == 1 && !DamagedNotDead) {
                 //Perform team 1 ray trace operations
                 //TeamOneRayTrace(ray_wor);
 				rayTraceOperations(ray_wor, robotUnits, usedRobotUnits, 1);
 				billBoardMode = 4;
             }
-			else{
+			else if(whoseTurn == 2 && !DamagedNotDead){
 				//Perform team 2 ray trace operations
 			    //TeamTwoRayTrace(ray_wor);
 				rayTraceOperations(ray_wor, alienUnits, usedAlienUnits, 2);
@@ -793,6 +797,8 @@ public:
 
 		//Only run weapon loop if possessed actor exists
 		else if (possessedActor != NULL) {
+
+			weaponFired = true;
 
 			//---- if weapon is shotgun
 			if (possessedActor->currWeapon == 1) {
@@ -2394,6 +2400,8 @@ public:
             if (didHitObject) {
 
                 if (distance(renderBulletObj->position, bulletStartPos) >= hitObjectDistance) {
+					weaponFired = false;
+
 
                     if (DamagedPlayer != NULL) {
                         if (DamagedPlayer->health >= 1.0f)
@@ -2421,13 +2429,14 @@ public:
                             }
                             else{
                                 isCaptureCursor = !isCaptureCursor; // turn the cursor back on
-                                possessedBullet = NULL;
+                                //possessedBullet = NULL;
 								BlurOn = false;
                                 bullets.clear();
-                                isBulletShot = false;
+                                //isBulletShot = false;
                                 DamagedPlayer = NULL;
-                                isOverheadView = true;
-                                switchTurn();
+                                //isOverheadView = true;
+                                //switchTurn();
+								DamagedNotDead = true;
                             }
                         }
                     }
@@ -2451,6 +2460,7 @@ public:
             else {
                 if (distance(renderBulletObj->position, bulletStartPos) > 20.0f) {
                     renderBulletObj = NULL;
+					weaponFired = false;
 
                     // Go back to the overhead view after shooting
                     if (!isOverheadView)
@@ -3231,7 +3241,7 @@ public:
 			else{
 				velocity = 0.0f;
 				canJump = true;
-				if(readyToSwitch == true){
+				if(readyToSwitch == true && !weaponFired){
 					isOverheadView = true;
 				    switchTurn();
 				}
@@ -3505,6 +3515,21 @@ public:
 
 				else if (whoseTurn == 2)
 					billBoardMode = 5;
+			}
+		}
+
+		if (DamagedNotDead) {
+			static float hitTimer = 1.0f;
+			if (hitTimer >= 0.0f) {
+				hitTimer -= 1.0f * deltaTime;
+			}
+			else {
+				hitTimer = 1.0f;
+				DamagedNotDead = false;
+				possessedBullet = NULL;
+				isBulletShot = false;
+				isOverheadView = true;
+				switchTurn();
 			}
 		}
 
