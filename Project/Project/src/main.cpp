@@ -55,7 +55,8 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial;
+GLuint Tex_Floor_Norm, Tex_Wall_Norm, Tex_Hex_Norm, Tex_Fan_Norm;
 GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
 
@@ -74,6 +75,8 @@ bool isBulletShot = false; // -- If bullet is not shot, go straight back to over
 vec3 bulletStartPos;
 vector<shared_ptr<GameObject> > bullets;
 
+//Globals for normal mapping
+GLuint GrndBuffObj, GrndNorBuffObj, GrndTexBuffObj, GIndxBuffObj, GrndTanBO, GrndBNBO;
 
 //--- Vector of all actor game objects plus arrays of player units and enemy units
 vector<shared_ptr<GameObject> > sceneActorGameObjs, sceneTerrainObjs, AllGameObjects, usedRobotUnits, usedAlienUnits;
@@ -110,7 +113,7 @@ vec3 moveDir = vec3(0,0,0);
 //Turn Time
 double turnStartTime = 0;
 //durration of possesion in seconds
-int turnLength = 12; // use 11
+int turnLength = 11; // use 11
 
 bool isCaptureCursor = false;
 
@@ -152,6 +155,11 @@ vector<std::string> faces
 	"../resources/sky-back.png",
 	"../resources/sky-front.png"
 };
+
+//BillBoard buffers
+unsigned int bbVAO, bbVBO;
+//Billboard ID global
+int billBoardMode = 1; 
 
 //UI
 UIController mainMenuUI;
@@ -213,7 +221,7 @@ public:
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog, texProg, skyProg, FBOProg;
+	std::shared_ptr<Program> prog, texProg, skyProg, FBOProg, bbProg;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -1100,6 +1108,113 @@ public:
 		//doesn't need depth
 	}
 
+	void initBillBoard(const std::string& resourceDirectory) {
+		char filepath[1000]; // Char array
+		int width, height, channels;
+
+		string str = resourceDirectory + "/images/Tutorial.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Tutorial);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Tutorial);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/Player1_Win.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Win1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Win1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/Player2_Win.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Win2);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Win2);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		const float bbVertices[] = { 1.0,  1.0, 0.0,
+								-1.0,  1.0, 0.0,
+								-1.0, -1.0, 0.0,
+								-1.0, -1.0, 0.0,
+								 1.0, -1.0, 0.0,
+								 1.0,  1.0, 0.0 };
+
+		// billboard VAO
+		glGenVertexArrays(1, &bbVAO);
+		glGenBuffers(1, &bbVBO);
+		glBindVertexArray(bbVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, bbVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(bbVertices), &bbVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		glBindVertexArray(0);
+	}
+
+	void initNormals() {
+		float GrndNorm[] = {
+		0, 1, 0,
+		0, 1, 0,
+		0, 1, 0,
+		0, 1, 0,
+		0, 1, 0,
+		0, 1, 0
+		};
+
+		float GTBO[] = {
+		 1, 0, 0,
+		 1, 0, 0,
+		 1, 0, 0,
+		 1, 0, 0,
+		 1, 0, 0,
+		 1, 0, 0
+				};
+
+		float GBNBO[] = {
+		 0, 0, -1,
+		 0, 0, -1,
+		 0, 0, -1,
+		 0, 0, -1,
+		 0, 0, -1,
+		 0, 0, -1
+		};
+		glGenBuffers(1, &GrndNorBuffObj);
+		glBindBuffer(GL_ARRAY_BUFFER, GrndNorBuffObj);
+		int data;
+		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &data);
+		cout << data << endl;
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GrndNorm), GrndNorm, GL_STATIC_DRAW);
+
+		glGenBuffers(1, &GrndTanBO);
+		glBindBuffer(GL_ARRAY_BUFFER, GrndTanBO);
+		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &data);
+		cout << data << endl;
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GTBO), GTBO, GL_STATIC_DRAW);
+
+		glGenBuffers(1, &GrndBNBO);
+		glBindBuffer(GL_ARRAY_BUFFER, GrndBNBO);
+		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &data);
+		cout << data << endl;
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GBNBO), GBNBO, GL_STATIC_DRAW);
+	}
 
 	void init(const std::string& resourceDirectory)
 	{
@@ -1239,7 +1354,10 @@ public:
 		ShadowProg->addAttribute("vertPos");
 		ShadowProg->addAttribute("vertNor");
 		ShadowProg->addAttribute("vertTex");
+		ShadowProg->addUniform("vertTan");
+		ShadowProg->addUniform("vertBN");
 		ShadowProg->addUniform("Texture0");
+		ShadowProg->addUniform("normalTex");
 		ShadowProg->addUniform("shadowDepth");
 		ShadowProg->addUniform("MatAmb");
 		ShadowProg->addUniform("MatDif");
@@ -1258,9 +1376,23 @@ public:
 		FBOProg->addAttribute("vertPos");
 		FBOProg->addUniform("mode");
 
+		bbProg = make_shared<Program>();
+		bbProg->setVerbose(true);
+		bbProg->setShaderNames(resourceDirectory + "/bb_vert.glsl", resourceDirectory + "/bb_frag.glsl");
+		if (!bbProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		bbProg->addAttribute("vertPos");
+		bbProg->addAttribute("vertTex");
+		bbProg->addUniform("Texture0");
+
 		initShadow();
 		initSky(resourceDirectory);
 		initFBO(resourceDirectory, width, height);
+		initBillBoard(resourceDirectory);
+		//initNormals();
 	}
 	
 	void initPlayerBbox()
@@ -1482,6 +1614,19 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
+		str = resourceDirectory + "/images/scifiFloorNorm.jpg";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Floor_Norm);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Floor_Norm);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
 
 		str = resourceDirectory + "/images/scifiWall.jpg";
 		strcpy(filepath, str.c_str()); // copy the string into the char array
@@ -1489,6 +1634,19 @@ public:
 		glGenTextures(1, &Tex_Wall);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/scifiWallNorm.jpg";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Wall_Norm);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Wall_Norm);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
@@ -1509,12 +1667,38 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
+		str = resourceDirectory + "/images/hexPlatingNorm.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Hex_Norm);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Hex_Norm);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
 		str = resourceDirectory + "/images/fan.jpg";
 		strcpy(filepath, str.c_str()); // copy the string into the char array
 		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
 		glGenTextures(1, &Tex_Fan);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, Tex_Fan);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/fanNorm.jpg";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Fan_Norm);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Fan_Norm);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
@@ -1788,6 +1972,7 @@ public:
 		glGenBuffers(1, &quad_vertexbuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
 	}
 
 	/* Helper function to create the framebuffer object and
@@ -2111,6 +2296,7 @@ public:
 			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			//if (billBoardMode) { renderBillBoard(billBoardMode); }
 			renderSkybox(P, M);
 
 			ShadowProg->bind();
@@ -2119,6 +2305,10 @@ public:
 			glBindTexture(GL_TEXTURE_2D, depthMap);
 			glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
 			glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
+
+			//for normal mapping
+			glUniform3f(ShadowProg->getUniform("vertTan"), 1.0, 0.0, 0.0);
+			glUniform3f(ShadowProg->getUniform("vertBN"), 0.0, 0.0, -1.0);
 
 			/*Set up skybox for environment mapping*/
 			glActiveTexture(GL_TEXTURE2);
@@ -2131,6 +2321,27 @@ public:
 			//attemp to set V matrix using our cam setup
 			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
+		/*	glEnableVertexAttribArray(1);
+			cout << glGetError() << endl;
+			glBindBuffer(GL_ARRAY_BUFFER, GrndNorBuffObj);
+			cout << glGetError() << endl;
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			cout << glGetError() << endl;*/
+			/*int h_tan = ShadowProg->getAttribute("vertTan");
+			glEnableVertexAttribArray(h_tan);
+			cout << glGetError() << endl;
+			glBindBuffer(GL_ARRAY_BUFFER, GrndTanBO);
+			cout << glGetError() << endl;
+			glVertexAttribPointer(h_tan, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			cout << glGetError() << endl;
+
+			int h_BN = ShadowProg->getAttribute("vertBN");
+			glEnableVertexAttribArray(h_BN);
+			cout << glGetError() << endl;
+			glBindBuffer(GL_ARRAY_BUFFER, GrndBNBO);
+			cout << glGetError() << endl;
+			glVertexAttribPointer(h_BN, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			cout << glGetError() << endl;*/
 
 			// Actually render the models with shadows cast on them
 			renderSceneActors(M, P, V, ShadowProg, true);
@@ -2138,8 +2349,17 @@ public:
 			SetMaterial(1, ShadowProg);
 			renderTerrain(M, P, V, ShadowProg, true);
 			// render all the actors in the scene
-			// Render all objs in the terrain
+			// Render all objs in the terrain`
 
+			//diable all atrributes to avoid conflict with other shaders
+			//glDisableVertexAttribArray(0);
+			//cout << glGetError() << endl;
+			//glDisableVertexAttribArray(1);
+			////glDisableVertexAttribArray(2);
+			/*cout << glGetError() << endl;
+			glDisableVertexAttribArray(3);
+			cout << glGetError() << endl;
+			glDisableVertexAttribArray(4);*/
 
 			ShadowProg->unbind();
 		}
@@ -2323,6 +2543,8 @@ public:
 					if (TexOn) {
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_White);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_White);
 						glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 						glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 						glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
@@ -2466,6 +2688,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Floor_Norm);
 						glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 						glUniform3f(shader->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 						glUniformMatrix4fv(shader->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
@@ -2509,6 +2733,8 @@ public:
 					// Rebind the other texture
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+					glActiveTexture(GL_TEXTURE3);
+					glBindTexture(GL_TEXTURE_2D, Tex_Floor_Norm);
 
 					// Head
 					M->pushMatrix();
@@ -2652,6 +2878,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Floor);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Floor_Norm);
 						//SetMaterial(1);
 						//M->scale(vec3(2.f, 2.f, 2.f));
 					}
@@ -2659,6 +2887,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Hex_Norm);
 						//SetMaterial(2);
 						//M->scale(vec3(2.f, 2.f, 2.f));
 					}
@@ -2666,6 +2896,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall_Norm);
 						//SetMaterial(3);
 						//M->scale(vec3(2.f, 2.f, 2.f));
 					}
@@ -2673,6 +2905,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Hex);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Hex_Norm);
 						//SetMaterial(4);
 						//M->scale(vec3(2.f, 2.f, 2.f));
 					}
@@ -2680,6 +2914,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall_Norm);
 						//SetMaterial(3);
 						//M->scale(vec3(2.f, 2.f, 2.f));
 					}
@@ -2687,6 +2923,8 @@ public:
 					{
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_Wall);
+						glActiveTexture(GL_TEXTURE3);
+						glBindTexture(GL_TEXTURE_2D, Tex_Wall_Norm);
 					}
 				}
 
@@ -3009,6 +3247,47 @@ public:
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	}
+
+	void renderBillBoard(int billboardmode) {
+		bbProg->bind();
+		GLuint activeTexture;
+
+		switch (billboardmode) {
+		case 1:
+			activeTexture = Tex_Tutorial;
+			break;
+		case 2:
+			activeTexture = Tex_Win1;
+			break;
+		case 3:
+			activeTexture = Tex_Win2;
+			break;
+		}
+
+		//glDepthFunc(GL_GEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+		//glClear(GL_DEPTH_BUFFER_BIT);
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, activeTexture);
+		////assert(GLTextureWriter::WriteImage(activeTexture, "Texture_output.png"));
+
+		//glUniform1i(bbProg->getUniform("Texture0"), 0);
+		//glBindVertexArray(bbVAO);
+		//glDrawArrays(GL_TRIANGLES, 0, 6);
+		//glBindVertexArray(0);
+		//glDepthFunc(GL_LESS); // set depth function back to default
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, activeTexture);
+		glUniform1i(bbProg->getUniform("Texture0"), 0);
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+
+		bbProg->unbind();
 	}
 
 	void renderSkybox(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M) {

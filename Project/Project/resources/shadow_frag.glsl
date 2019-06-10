@@ -2,6 +2,7 @@
 uniform sampler2D Texture0;
 uniform sampler2D shadowDepth;
 uniform samplerCube skyBox;
+uniform sampler2D normalTex;
 
 uniform vec3 eye;
 uniform vec3 lightSource;
@@ -18,6 +19,7 @@ uniform float shine;
 uniform float hit;
 
 out vec4 Outcolor;
+in vec3 lightTS;
 
 in OUT_struct {
    vec3 fPos;
@@ -61,7 +63,7 @@ float TestShadow(vec4 LSfPos) {
 void main() {
 
 	float Shade;
-	float amb = 0.3;
+	float amb = 0.6;
 	vec4 MatColor;
 	vec4 AmbColor;
 
@@ -118,8 +120,12 @@ void main() {
 
 	Shade = TestShadow(in_struct.fPosLS);
 
+	 vec3 normal = texture(normalTex, in_struct.vTexCoord).xyz;
+	 vec3 shiftedNormal = 2.0 * normal - vec3(1.0);
+	 float diffCoef = max(0, dot(normal, lightvec));
+
 	// Clamp our output color to between 0.0 and 1.0
-	Outcolor = clamp( amb*(texColor0*AmbColor) + (1.0-Shade) * texColor0 * MatColor * BaseColor * envirmap, 0.0, 1.0);
+	Outcolor = clamp(amb*(texColor0*AmbColor) + (1.0-Shade) * texColor0 * MatColor * BaseColor * diffCoef * envirmap, 0.0, 1.0);
 	//Outcolor = vec4(texture(skyBox, r).rgb, 1.0); // For use in environment mapping
 }
 
