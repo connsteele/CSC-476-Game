@@ -2572,7 +2572,7 @@ public:
 						if (sceneActorGameObjs[i]->team == whoseTurn)
 						{
 							M->pushMatrix();
-							M->translate(vec3(0.0f, -2.05f, 0.0f));
+							M->translate(vec3(0.0f, -1.8f, 0.0f));
 							M->rotate(-1.5708, vec3(1.0f, 0.f, 0.f)); // use radians to rotate -90 degrees
 							M->scale(3.0f);
 
