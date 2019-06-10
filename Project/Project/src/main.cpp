@@ -55,7 +55,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial, Tex_Turn1, Tex_Turn2;
 GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
 
@@ -155,6 +155,8 @@ vector<std::string> faces
 
 //BillBoard buffers
 unsigned int bbVAO, bbVBO;
+//billboard global controller
+uint FirstTime = 1;
 
 //UI
 UIController mainMenuUI;
@@ -568,6 +570,7 @@ public:
 			mouseDown = true;
 
 			billBoardMode = 0;
+			FirstTime = 0;
 
 			glfwGetCursorPos(window, &posX, &posY);
 			cout << "Pos X " << posX << " Pos Y " << posY << endl;
@@ -579,11 +582,13 @@ public:
                 //Perform team 1 ray trace operations
                 //TeamOneRayTrace(ray_wor);
 				rayTraceOperations(ray_wor, robotUnits, usedRobotUnits, 1);
+				billBoardMode = 4;
             }
 			else{
 				//Perform team 2 ray trace operations
 			    //TeamTwoRayTrace(ray_wor);
 				rayTraceOperations(ray_wor, alienUnits, usedAlienUnits, 2);
+				billBoardMode = 5;
 			}
 
 			
@@ -753,6 +758,12 @@ public:
 						isOverheadView = true;
 						firstPersonUI.setRender(false);
 						overViewUI.setRender(true);
+
+						if (whoseTurn == 1)
+							billBoardMode = 4;
+
+						else if (whoseTurn == 2)
+							billBoardMode = 5;
 					}
 
 				}
@@ -1144,6 +1155,32 @@ public:
 		glGenTextures(1, &Tex_Win2);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, Tex_Win2);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/player1_turn.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Turn1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Turn1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/player2_turn.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Turn2);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Turn2);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
@@ -3173,21 +3210,16 @@ public:
 		case 3:
 			activeTexture = Tex_Win2;
 			break;
+
+		case 4:
+			activeTexture = Tex_Turn1;
+			break;
+
+		case 5:
+			activeTexture = Tex_Turn2;
+			break;
 		}
 
-		//glDepthFunc(GL_GEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-		//glClear(GL_DEPTH_BUFFER_BIT);
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, activeTexture);
-		////assert(GLTextureWriter::WriteImage(activeTexture, "Texture_output.png"));
-
-		//glUniform1i(bbProg->getUniform("Texture0"), 0);
-		//glBindVertexArray(bbVAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
-		//glBindVertexArray(0);
-		//glDepthFunc(GL_LESS); // set depth function back to default
-		//glEnable(GL_BLEND);
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, activeTexture);
 		glUniform1i(bbProg->getUniform("Texture0"), 0);
@@ -3236,6 +3268,7 @@ public:
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView) // Possession
 		{
+			billBoardMode = 0;
 			if (DamagedPlayer && (DamagedPlayer->health <= 0.0f)) // Death cam for a set amount of time then cut away
 			{
 				static float deathCamTimer = 3.0f;
@@ -3305,6 +3338,14 @@ public:
 			
 			curCamCenter = curCamEye + lookDir;
 			camMove = vec3(ox, oy, oz);
+
+			if (!FirstTime) {
+				if (whoseTurn == 1)
+					billBoardMode = 4;
+
+				else if (whoseTurn == 2)
+					billBoardMode = 5;
+			}
 		}
 
 		// Check if the camera should be interpolated
