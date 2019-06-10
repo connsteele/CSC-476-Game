@@ -3303,46 +3303,6 @@ public:
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 
-	void renderBillBoard(int billboardmode) {
-		bbProg->bind();
-		GLuint activeTexture;
-
-		switch (billboardmode) {
-		case 1:
-			activeTexture = Tex_Tutorial;
-			break;
-		case 2:
-			activeTexture = Tex_Win1;
-			break;
-		case 3:
-			activeTexture = Tex_Win2;
-			break;
-		}
-
-		//glDepthFunc(GL_GEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-		//glClear(GL_DEPTH_BUFFER_BIT);
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, activeTexture);
-		////assert(GLTextureWriter::WriteImage(activeTexture, "Texture_output.png"));
-
-		//glUniform1i(bbProg->getUniform("Texture0"), 0);
-		//glBindVertexArray(bbVAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
-		//glBindVertexArray(0);
-		//glDepthFunc(GL_LESS); // set depth function back to default
-		//glEnable(GL_BLEND);
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, activeTexture);
-		glUniform1i(bbProg->getUniform("Texture0"), 0);
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		glDisableVertexAttribArray(0);
-
-		bbProg->unbind();
-	}
 
 	void renderSkybox(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M) {
 		auto V = make_shared<MatrixStack>();
