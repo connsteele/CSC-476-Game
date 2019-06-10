@@ -55,7 +55,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial;
 GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
 
@@ -153,6 +153,9 @@ vector<std::string> faces
 	"../resources/sky-front.png"
 };
 
+//BillBoard buffers
+unsigned int bbVAO, bbVBO;
+
 //UI
 UIController mainMenuUI;
 UIController overViewUI;
@@ -188,6 +191,9 @@ public:
 	//Assign who's turn it is. TODO: Make random at some point(?) for now start at 1
 	int whoseTurn = 1;
 
+	//keep track of which HUD elements should be rendered
+	uint billBoardMode = 1;
+
 	//Keep track of how many units remain for each team
 	int numAlienUnits = 4;
 	int numRobotUnits = 4;
@@ -213,7 +219,7 @@ public:
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog, texProg, skyProg, FBOProg;
+	std::shared_ptr<Program> prog, skyProg, FBOProg, bbProg;
 
 	// Access OBJ files
 	shared_ptr<Shape> bunnyShape, maRobotShape, roboRarm, roboLarm, roboRleg, roboLleg, roboBody, roboHead;
@@ -560,6 +566,8 @@ public:
 		if (action == GLFW_PRESS) // Attempt at ray casting done here
 		{
 			mouseDown = true;
+
+			billBoardMode = 0;
 
 			glfwGetCursorPos(window, &posX, &posY);
 			cout << "Pos X " << posX << " Pos Y " << posY << endl;
@@ -1100,6 +1108,67 @@ public:
 		//doesn't need depth
 	}
 
+	void initBillBoard(const std::string& resourceDirectory) {
+		char filepath[1000]; // Char array
+		int width, height, channels;
+
+		string str = resourceDirectory + "/images/Tutorial.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		unsigned char* dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Tutorial);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Tutorial);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/Player1_Win.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Win1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Win1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/Player2_Win.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Win2);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Win2);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		const float bbVertices[] = { 1.0,  1.0, 0.0,
+								-1.0,  1.0, 0.0,
+								-1.0, -1.0, 0.0,
+								-1.0, -1.0, 0.0,
+								 1.0, -1.0, 0.0,
+								 1.0,  1.0, 0.0 };
+
+		// billboard VAO
+		glGenVertexArrays(1, &bbVAO);
+		glGenBuffers(1, &bbVBO);
+		glBindVertexArray(bbVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, bbVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(bbVertices), &bbVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		glBindVertexArray(0);
+	}
+
 
 	void init(const std::string& resourceDirectory)
 	{
@@ -1113,6 +1182,11 @@ public:
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
+
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+
 
 		//----- Setup Shaders -----
 		// Setup the default shader program
@@ -1258,8 +1332,22 @@ public:
 		FBOProg->addAttribute("vertPos");
 		FBOProg->addUniform("mode");
 
+		bbProg = make_shared<Program>();
+		bbProg->setVerbose(true);
+		bbProg->setShaderNames(resourceDirectory + "/bb_vert.glsl", resourceDirectory + "/bb_frag.glsl");
+		if (!bbProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		bbProg->addAttribute("vertPos");
+		bbProg->addAttribute("vertTex");
+		bbProg->addUniform("Texture0");
+
+
 		initShadow();
 		initSky(resourceDirectory);
+		initBillBoard(resourceDirectory);
 		initFBO(resourceDirectory, width, height);
 	}
 	
@@ -1479,7 +1567,7 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 
@@ -2111,6 +2199,7 @@ public:
 			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			if (billBoardMode) { renderBillBoard(billBoardMode); }
 			renderSkybox(P, M);
 
 			ShadowProg->bind();
@@ -2143,9 +2232,6 @@ public:
 
 			ShadowProg->unbind();
 		}
-		
-		//render SkyBox
-		//renderSkybox(P, M);
 	}
 
 
@@ -2750,18 +2836,33 @@ public:
 	void updateGameLogic()
 	{
 		// printf("Update Game Logic\n");
-		int counter = 0;
+		int counter_team2 = 0;
 		for (int i = 0; i < alienUnits.size(); i++)
 		{
 			if (alienUnits[i]->beenShot)
 			{
-				counter++;
+				counter_team2++;
 			}
 		}
-		if (counter == alienUnits.size())
+		if (counter_team2 == alienUnits.size())
 		{
-			
-			printf("THE ROBOTS HAVE WON!\n");
+			//set billboard to player 1 victory
+			billBoardMode = 2;
+
+		}
+
+		int counter_team1 = 0;
+		for (int i = 0; i < robotUnits.size(); i++)
+		{
+			if (robotUnits[i]->beenShot)
+			{
+				counter_team1++;
+			}
+		}
+		if (counter_team1 == robotUnits.size())
+		{
+			//set billboard to player 2 victory
+			billBoardMode = 3;
 
 		}
 
@@ -3058,6 +3159,47 @@ public:
 		FBOProg->unbind();
 	}
 
+	void renderBillBoard(int billboardmode) {
+		bbProg->bind();
+		GLuint activeTexture;
+
+		switch (billboardmode) {
+		case 1:
+			activeTexture = Tex_Tutorial;
+			break;
+		case 2:
+			activeTexture = Tex_Win1;
+			break;
+		case 3:
+			activeTexture = Tex_Win2;
+			break;
+		}
+
+		//glDepthFunc(GL_GEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+		//glClear(GL_DEPTH_BUFFER_BIT);
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, activeTexture);
+		////assert(GLTextureWriter::WriteImage(activeTexture, "Texture_output.png"));
+
+		//glUniform1i(bbProg->getUniform("Texture0"), 0);
+		//glBindVertexArray(bbVAO);
+		//glDrawArrays(GL_TRIANGLES, 0, 6);
+		//glBindVertexArray(0);
+		//glDepthFunc(GL_LESS); // set depth function back to default
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, activeTexture);
+		glUniform1i(bbProg->getUniform("Texture0"), 0);
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+
+		bbProg->unbind();
+	}
+
 	void render()
 	{
 		// Get current frame buffer size.
@@ -3331,8 +3473,6 @@ public:
 
 		}
 
-		//renderUI();
-
 		//FBO stuff
 		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -3368,7 +3508,6 @@ public:
 			prog->unbind();
 
 		}
-		renderSkybox(P, M);
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
