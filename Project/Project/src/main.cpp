@@ -277,6 +277,7 @@ public:
 	vec4 Left, Right, Bottom, Top, Near, Far;
 	vec4 planes[6];
 
+	bool BlurOn = false;
 	float cTheta = 0;
 	bool mouseDown = false;
 
@@ -2364,6 +2365,7 @@ public:
 				if (possessedBullet != renderBulletObj)
 				{
 					possessedBullet = renderBulletObj;
+					BlurOn = true;
 				}
 
 				M->pushMatrix();
@@ -2420,6 +2422,7 @@ public:
                             else{
                                 isCaptureCursor = !isCaptureCursor; // turn the cursor back on
                                 possessedBullet = NULL;
+								BlurOn = false;
                                 bullets.clear();
                                 isBulletShot = false;
                                 DamagedPlayer = NULL;
@@ -2430,6 +2433,7 @@ public:
                     }
                     else{
                         possessedBullet = NULL;
+						BlurOn = false;
                         bullets.clear();
                         isBulletShot = false;
                         isOverheadView = true;
@@ -2458,6 +2462,7 @@ public:
                     isOverheadView = true;
                     isCaptureCursor = !isCaptureCursor; // turn the cursor back on
                     possessedBullet = NULL;
+					BlurOn = false;
                     bullets.clear();
                     isBulletShot = false;
 
@@ -3337,9 +3342,8 @@ public:
 		FBOProg->bind();
 		glUniform1i(FBOProg->getUniform("texBuf"), 0);
 
-		if (possessedBullet)
+		if (BlurOn)
 			glUniform1i(FBOProg->getUniform("mode"), 1);
-
 		else
 			glUniform1i(FBOProg->getUniform("mode"), 0);
 
@@ -3429,6 +3433,7 @@ public:
 				static float deathCamTimer = 3.0f;
 				//static float explosion counter;
 				static bool createExplosion = true;
+				BlurOn = false;
 
 				if (deathCamTimer >= 0.0f)
 				{
