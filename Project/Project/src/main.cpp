@@ -2257,7 +2257,7 @@ public:
 			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			if (billBoardMode) { renderBillBoard(billBoardMode); }
+			// if (billBoardMode) { renderBillBoard(billBoardMode); }
 			renderSkybox(P, M);
 
 			ShadowProg->bind();
@@ -2640,12 +2640,12 @@ public:
 					SetMaterial(5, ShadowProg);
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, Texs_Boom[ int(boomIndices[i]) ]  );
-					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					glUniformMatrix4fv(ShadowProg->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					glUniformMatrix4fv(ShadowProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 					glUniform3f(ShadowProg->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
 					glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 					glUniform3f(ShadowProg->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
-					if (boomIndices[i] < 54.0)
+					if (boomIndices[i] < 53.0)
 					{
 						boomIndices[i] += 0.2f;
 					}					
