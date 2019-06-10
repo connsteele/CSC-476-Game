@@ -1169,53 +1169,6 @@ public:
 		glBindVertexArray(0);
 	}
 
-	void initNormals() {
-		float GrndNorm[] = {
-		0, 1, 0,
-		0, 1, 0,
-		0, 1, 0,
-		0, 1, 0,
-		0, 1, 0,
-		0, 1, 0
-		};
-
-		float GTBO[] = {
-		 1, 0, 0,
-		 1, 0, 0,
-		 1, 0, 0,
-		 1, 0, 0,
-		 1, 0, 0,
-		 1, 0, 0
-				};
-
-		float GBNBO[] = {
-		 0, 0, -1,
-		 0, 0, -1,
-		 0, 0, -1,
-		 0, 0, -1,
-		 0, 0, -1,
-		 0, 0, -1
-		};
-		glGenBuffers(1, &GrndNorBuffObj);
-		glBindBuffer(GL_ARRAY_BUFFER, GrndNorBuffObj);
-		int data;
-		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &data);
-		cout << data << endl;
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GrndNorm), GrndNorm, GL_STATIC_DRAW);
-
-		glGenBuffers(1, &GrndTanBO);
-		glBindBuffer(GL_ARRAY_BUFFER, GrndTanBO);
-		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &data);
-		cout << data << endl;
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GTBO), GTBO, GL_STATIC_DRAW);
-
-		glGenBuffers(1, &GrndBNBO);
-		glBindBuffer(GL_ARRAY_BUFFER, GrndBNBO);
-		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &data);
-		cout << data << endl;
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GBNBO), GBNBO, GL_STATIC_DRAW);
-	}
-
 	void init(const std::string& resourceDirectory)
 	{
 		int width, height;
@@ -1354,8 +1307,6 @@ public:
 		ShadowProg->addAttribute("vertPos");
 		ShadowProg->addAttribute("vertNor");
 		ShadowProg->addAttribute("vertTex");
-		ShadowProg->addUniform("vertTan");
-		ShadowProg->addUniform("vertBN");
 		ShadowProg->addUniform("Texture0");
 		ShadowProg->addUniform("normalTex");
 		ShadowProg->addUniform("shadowDepth");
@@ -1392,7 +1343,6 @@ public:
 		initSky(resourceDirectory);
 		initFBO(resourceDirectory, width, height);
 		initBillBoard(resourceDirectory);
-		//initNormals();
 	}
 	
 	void initPlayerBbox()
@@ -2306,10 +2256,6 @@ public:
 			glUniform1i(ShadowProg->getUniform("shadowDepth"), 1);
 			glUniform3f(ShadowProg->getUniform("lightDir"), g_light.x, g_light.y, g_light.z);
 
-			//for normal mapping
-			glUniform3f(ShadowProg->getUniform("vertTan"), 1.0, 0.0, 0.0);
-			glUniform3f(ShadowProg->getUniform("vertBN"), 0.0, 0.0, -1.0);
-
 			/*Set up skybox for environment mapping*/
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
@@ -2321,27 +2267,6 @@ public:
 			//attemp to set V matrix using our cam setup
 			glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 			glUniformMatrix4fv(ShadowProg->getUniform("LS"), 1, GL_FALSE, value_ptr(LS));
-		/*	glEnableVertexAttribArray(1);
-			cout << glGetError() << endl;
-			glBindBuffer(GL_ARRAY_BUFFER, GrndNorBuffObj);
-			cout << glGetError() << endl;
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-			cout << glGetError() << endl;*/
-			/*int h_tan = ShadowProg->getAttribute("vertTan");
-			glEnableVertexAttribArray(h_tan);
-			cout << glGetError() << endl;
-			glBindBuffer(GL_ARRAY_BUFFER, GrndTanBO);
-			cout << glGetError() << endl;
-			glVertexAttribPointer(h_tan, 3, GL_FLOAT, GL_FALSE, 0, 0);
-			cout << glGetError() << endl;
-
-			int h_BN = ShadowProg->getAttribute("vertBN");
-			glEnableVertexAttribArray(h_BN);
-			cout << glGetError() << endl;
-			glBindBuffer(GL_ARRAY_BUFFER, GrndBNBO);
-			cout << glGetError() << endl;
-			glVertexAttribPointer(h_BN, 3, GL_FLOAT, GL_FALSE, 0, 0);
-			cout << glGetError() << endl;*/
 
 			// Actually render the models with shadows cast on them
 			renderSceneActors(M, P, V, ShadowProg, true);
@@ -2351,21 +2276,8 @@ public:
 			// render all the actors in the scene
 			// Render all objs in the terrain`
 
-			//diable all atrributes to avoid conflict with other shaders
-			//glDisableVertexAttribArray(0);
-			//cout << glGetError() << endl;
-			//glDisableVertexAttribArray(1);
-			////glDisableVertexAttribArray(2);
-			/*cout << glGetError() << endl;
-			glDisableVertexAttribArray(3);
-			cout << glGetError() << endl;
-			glDisableVertexAttribArray(4);*/
-
 			ShadowProg->unbind();
 		}
-		
-		//render SkyBox
-		//renderSkybox(P, M);
 	}
 
 

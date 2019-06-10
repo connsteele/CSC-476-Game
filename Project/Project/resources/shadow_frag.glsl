@@ -19,7 +19,6 @@ uniform float shine;
 uniform float hit;
 
 out vec4 Outcolor;
-in vec3 lightTS;
 
 in OUT_struct {
    vec3 fPos;
