@@ -204,6 +204,8 @@ public:
 	
 	//Global reference to damaged player
 	shared_ptr<GameObject> DamagedPlayer = NULL;
+	//Damage done to player
+	float DamageDone = 0.0f;
 
 	//Player Gravity Variables
 	float acceleration = -9.8f;
@@ -666,7 +668,16 @@ public:
             didHitObject = true;
 
             if (((HitObjects[minDistanceIndex]->team == 1 && teamNum == 2) || (HitObjects[minDistanceIndex]->team == 2 && teamNum == 1)) && !isOverheadView) {
-				DamagedPlayer = HitObjects[minDistanceIndex];
+
+
+				if(DamagedPlayer == NULL){
+                    DamagedPlayer = HitObjects[minDistanceIndex];
+                    DamageDone = 1.0f;
+				}
+				else if(DamagedPlayer == HitObjects[minDistanceIndex]){
+                    DamageDone = DamageDone + 1.0f;
+				}
+
 				//if (HitObjects[minDistanceIndex]->health >= 1.0f)
 				//{
 				//	HitObjects[minDistanceIndex]->health -= 1.0f;
@@ -2323,7 +2334,8 @@ public:
                     if (DamagedPlayer != NULL) {
                         if (DamagedPlayer->health >= 1.0f)
                         {
-                            DamagedPlayer->health -= 1.0f;
+                            DamagedPlayer->health -= DamageDone;
+                            DamageDone = 0.0f;
 
                             // Check to see if a units is dead, if it is remove it from the game
                             if (DamagedPlayer->health <= 0.0f) {
