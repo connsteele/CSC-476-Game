@@ -55,7 +55,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial, Tex_playerHighlight;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial, Tex_playerHighlight, Tex_Turn1, Tex_Turn2;
 GLuint Tex_Floor_Norm, Tex_Wall_Norm, Tex_Hex_Norm, Tex_Fan_Norm;
 GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
@@ -160,6 +160,8 @@ vector<std::string> faces
 unsigned int bbVAO, bbVBO;
 //Billboard ID global
 int billBoardMode = 1; 
+//billboard global controller
+uint FirstTime = 1;
 
 //UI
 UIController mainMenuUI;
@@ -195,6 +197,9 @@ public:
 
 	//Assign who's turn it is. TODO: Make random at some point(?) for now start at 1
 	int whoseTurn = 1;
+
+	//keep track of which HUD elements should be rendered
+	uint billBoardMode = 1;
 
 	//Keep track of how many units remain for each team
 	int numAlienUnits = 4;
@@ -571,6 +576,9 @@ public:
 		{
 			mouseDown = true;
 
+			billBoardMode = 0;
+			FirstTime = 0;
+
 			glfwGetCursorPos(window, &posX, &posY);
 			cout << "Pos X " << posX << " Pos Y " << posY << endl;
 
@@ -581,11 +589,13 @@ public:
                 //Perform team 1 ray trace operations
                 //TeamOneRayTrace(ray_wor);
 				rayTraceOperations(ray_wor, robotUnits, usedRobotUnits, 1);
+				billBoardMode = 4;
             }
 			else{
 				//Perform team 2 ray trace operations
 			    //TeamTwoRayTrace(ray_wor);
 				rayTraceOperations(ray_wor, alienUnits, usedAlienUnits, 2);
+				billBoardMode = 5;
 			}
 
 			
@@ -764,6 +774,12 @@ public:
 						isOverheadView = true;
 						firstPersonUI.setRender(false);
 						overViewUI.setRender(true);
+
+						if (whoseTurn == 1)
+							billBoardMode = 4;
+
+						else if (whoseTurn == 2)
+							billBoardMode = 5;
 					}
 
 				}
@@ -1162,6 +1178,32 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
+		str = resourceDirectory + "/images/player1_turn.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Turn1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Turn1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/player2_turn.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Turn2);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Turn2);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
 		const float bbVertices[] = { 1.0,  1.0, 0.0,
 								-1.0,  1.0, 0.0,
 								-1.0, -1.0, 0.0,
@@ -1192,6 +1234,11 @@ public:
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
+
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+
 
 		//----- Setup Shaders -----
 		// Setup the default shader program
@@ -1353,6 +1400,7 @@ public:
 
 		initShadow();
 		initSky(resourceDirectory);
+		initBillBoard(resourceDirectory);
 		initFBO(resourceDirectory, width, height);
 		initBillBoard(resourceDirectory);
 	}
@@ -1573,7 +1621,7 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		str = resourceDirectory + "/images/scifiFloorNorm.jpg";
@@ -2271,7 +2319,7 @@ public:
 			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			// if (billBoardMode) { renderBillBoard(billBoardMode); }
+			if (billBoardMode) { renderBillBoard(billBoardMode); }
 			renderSkybox(P, M);
 
 			ShadowProg->bind();
@@ -2979,18 +3027,33 @@ public:
 	void updateGameLogic()
 	{
 		// printf("Update Game Logic\n");
-		int counter = 0;
+		int counter_team2 = 0;
 		for (int i = 0; i < alienUnits.size(); i++)
 		{
 			if (alienUnits[i]->beenShot)
 			{
-				counter++;
+				counter_team2++;
 			}
 		}
-		if (counter == alienUnits.size())
+		if (counter_team2 == alienUnits.size())
 		{
-			
-			printf("THE ROBOTS HAVE WON!\n");
+			//set billboard to player 1 victory
+			billBoardMode = 2;
+
+		}
+
+		int counter_team1 = 0;
+		for (int i = 0; i < robotUnits.size(); i++)
+		{
+			if (robotUnits[i]->beenShot)
+			{
+				counter_team1++;
+			}
+		}
+		if (counter_team1 == robotUnits.size())
+		{
+			//set billboard to player 2 victory
+			billBoardMode = 3;
 
 		}
 
@@ -3328,6 +3391,42 @@ public:
 		FBOProg->unbind();
 	}
 
+	void renderBillBoard(int billboardmode) {
+		bbProg->bind();
+		GLuint activeTexture;
+
+		switch (billboardmode) {
+		case 1:
+			activeTexture = Tex_Tutorial;
+			break;
+		case 2:
+			activeTexture = Tex_Win1;
+			break;
+		case 3:
+			activeTexture = Tex_Win2;
+			break;
+
+		case 4:
+			activeTexture = Tex_Turn1;
+			break;
+
+		case 5:
+			activeTexture = Tex_Turn2;
+			break;
+		}
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, activeTexture);
+		glUniform1i(bbProg->getUniform("Texture0"), 0);
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisableVertexAttribArray(0);
+
+		bbProg->unbind();
+	}
+
 	void render()
 	{
 		// Get current frame buffer size.
@@ -3364,6 +3463,7 @@ public:
 		// Setup yaw and pitch of camera for lookAt()
 		if (!isOverheadView) // Possession
 		{
+			billBoardMode = 0;
 			if (DamagedPlayer && (DamagedPlayer->health <= 0.0f)) // Death cam for a set amount of time then cut away
 			{
 				static float deathCamTimer = 3.0f;
@@ -3433,6 +3533,14 @@ public:
 			
 			curCamCenter = curCamEye + lookDir;
 			camMove = vec3(ox, oy, oz);
+
+			if (!FirstTime) {
+				if (whoseTurn == 1)
+					billBoardMode = 4;
+
+				else if (whoseTurn == 2)
+					billBoardMode = 5;
+			}
 		}
 
 		// Check if the camera should be interpolated
@@ -3601,8 +3709,6 @@ public:
 
 		}
 
-		//renderUI();
-
 		//FBO stuff
 		glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[1]);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -3638,7 +3744,6 @@ public:
 			prog->unbind();
 
 		}
-		renderSkybox(P, M);
 
 		M->popMatrix(); // Pop Scene Matrix
 		P->popMatrix(); // This wasnt here b4
