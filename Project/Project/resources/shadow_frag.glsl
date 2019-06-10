@@ -116,10 +116,12 @@ void main() {
 
 	vec4 BaseColor = vec4(in_struct.vColor, 1);
 	vec4 texColor0 = texture(Texture0, in_struct.vTexCoord);
-	if (texColor0.a < 0.1)
-	{
-		discard;
-	}
+
+	// Discard alphas (dont do this in this shader ill mess up shadows
+//	if (texColor0.a < 0.1)
+//	{
+//		discard;
+//	}
 
 	Shade = TestShadow(in_struct.fPosLS);
 

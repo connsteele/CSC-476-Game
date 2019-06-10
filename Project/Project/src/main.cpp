@@ -55,7 +55,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial, Tex_playerHighlight;
 GLuint Tex_Floor_Norm, Tex_Wall_Norm, Tex_Hex_Norm, Tex_Fan_Norm;
 GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
@@ -1234,6 +1234,7 @@ public:
 		progTerrain->addUniform("M");
 		progTerrain->addUniform("V");
 		progTerrain->addUniform("eye");
+		progTerrain->addUniform("tex");
 		progTerrain->addAttribute("vertPos");
 		progTerrain->addAttribute("vertNor");
 		progTerrain->addAttribute("vertTex");
@@ -1673,6 +1674,19 @@ public:
 		glGenTextures(1, &Tex_White);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, Tex_White);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		str = resourceDirectory + "/images/playerHighlight.png";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_playerHighlight);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_playerHighlight);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
@@ -2465,8 +2479,10 @@ public:
 				if (sceneActorGameObjs[i]->health > 0.0f)
 				{
 					if (TexOn) {
+						// bind texture
 						glActiveTexture(GL_TEXTURE0);
 						glBindTexture(GL_TEXTURE_2D, Tex_White);
+						// Bind normals
 						glActiveTexture(GL_TEXTURE3);
 						glBindTexture(GL_TEXTURE_2D, Tex_White);
 						glUniformMatrix4fv(shader->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
@@ -2486,12 +2502,50 @@ public:
 					M->scale(0.425f);
 					if (sceneActorGameObjs[i]->team == 2)
 					{
-						M->rotate(-60.0f, vec3(0.0f, 1.0f, 0.0f) );
+						M->rotate(-M_PI, vec3(0.0f, 1.0f, 0.0f) ); // Rotate the enemy units -180 deg using rads
 					}
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					roboBody->draw(shader);
 
+					if (!sceneActorGameObjs[i]->isUsed)
+					{
+						shader->unbind();
+						progTerrain->bind();
+						// SetMaterial(5, progTerrain);
+						// Check the team 
 
+						
+
+						if (sceneActorGameObjs[i]->team == whoseTurn)
+						{
+							M->pushMatrix();
+							M->translate(vec3(0.0f, -2.05f, 0.0f));
+							M->rotate(-1.5708, vec3(1.0f, 0.f, 0.f)); // use radians to rotate -90 degrees
+							M->scale(3.0f);
+
+
+							// Render Textured Quads
+							glUniformMatrix4fv(progTerrain->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+							glUniformMatrix4fv(progTerrain->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+							glUniform3f(progTerrain->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+							glUniformMatrix4fv(progTerrain->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+							glUniform3f(progTerrain->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+
+							// Bind the highlight texture
+							glActiveTexture(GL_TEXTURE0);
+							glBindTexture(GL_TEXTURE_2D, Tex_playerHighlight);
+							glUniform1i(progTerrain->getUniform("tex"), 0);
+							glEnableVertexAttribArray(0);
+							glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+							glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+							glDrawArrays(GL_TRIANGLES, 0, 6);
+							glDisableVertexAttribArray(0);
+
+							M->popMatrix();
+						}
+						progTerrain->unbind();
+						shader->bind();
+					}
 
 					// Head
 					M->pushMatrix();
@@ -2634,24 +2688,37 @@ public:
 
 					shader->unbind();
 					// ----  Render Explosion
-					ShadowProg->bind();
+					progTerrain->bind();
 					M->pushMatrix();
-					M->scale(4.0f);
-					SetMaterial(5, ShadowProg);
+					M->scale(6.0f);
+					// negate the animated rotation and rotate the particles to face upright
+					M->rotate(-deathRots[i] + -(M_PI / 2.0f), vec3(1.0f, 0.0f, 0.0f));
+
+					// Render Textured Quads
+					glUniformMatrix4fv(progTerrain->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
+					glUniformMatrix4fv(progTerrain->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+					glUniform3f(progTerrain->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
+					glUniformMatrix4fv(progTerrain->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+					glUniform3f(progTerrain->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+
+					// Bind the highlight texture
 					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, Texs_Boom[ int(boomIndices[i]) ]  );
-					glUniformMatrix4fv(ShadowProg->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
-					glUniformMatrix4fv(ShadowProg->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-					glUniform3f(ShadowProg->getUniform("eye"), curCamEye.x, curCamEye.y, curCamEye.z);
-					glUniformMatrix4fv(ShadowProg->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-					glUniform3f(ShadowProg->getUniform("lightSource"), g_light.x, g_light.y, g_light.z);
+					glBindTexture(GL_TEXTURE_2D, Texs_Boom[int(boomIndices[i])]);
+					glUniform1i(progTerrain->getUniform("tex"), 0);
+					glEnableVertexAttribArray(0);
+					glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+					glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+					glDrawArrays(GL_TRIANGLES, 0, 6);
+					glDisableVertexAttribArray(0);
 					if (boomIndices[i] < 53.0)
 					{
 						boomIndices[i] += 0.2f;
-					}					
-					cube->draw(ShadowProg);
+					}
+
 					M->popMatrix();
-					ShadowProg->unbind();
+					progTerrain->unbind();
+
+					// Rebind character shader
 					shader->bind();
 
 					// Rebind the other texture

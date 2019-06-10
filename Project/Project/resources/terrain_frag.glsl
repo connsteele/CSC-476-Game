@@ -16,6 +16,12 @@ void main()
 {
 
 	vec4 newcolor = texture(tex, vertex_tex);
+	// Get rid of the alphas to make it transparent
+//	if (newcolor.a < 0.1)
+//	{
+//		discard;
+//	}
+
 	color = newcolor;
 	//diffuse lighting
     vec3 n = normalize(vertex_nor);
@@ -31,7 +37,12 @@ void main()
     specular = clamp(specular, 0, 0.5);
     specular = pow(specular, 20);
     color += specular;
-    color.a = 1;
+    // color.a = 1;
+	// Get rid of alpha coloring to make it transparent
+	if (color.a < 0.1)
+	{
+		discard;
+	}
    
 
 }

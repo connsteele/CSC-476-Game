@@ -17,7 +17,8 @@ out vec3 vertex_pos; // Vertex positions
 void main()
 {
 	gl_Position = P * V * M * vertPos;
-	vertex_tex = vertTex;
+	// vertex_tex = vertTex; // use given
+	vertex_tex = (vertPos.xy+vec2(1, 1))/2.0; // calculate texuture coordinates
 	vertex_nor = (M * vec4(vertNor, 0.0)).xyz;
 	vertex_pos = (M * vertPos).xyz;
 
