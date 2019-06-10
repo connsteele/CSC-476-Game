@@ -2246,7 +2246,7 @@ public:
 			glBindFramebuffer(GL_FRAMEBUFFER, frameBuf[0]);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			//if (billBoardMode) { renderBillBoard(billBoardMode); }
+			if (billBoardMode) { renderBillBoard(billBoardMode); }
 			renderSkybox(P, M);
 
 			ShadowProg->bind();
