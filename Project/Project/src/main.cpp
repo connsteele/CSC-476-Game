@@ -3510,11 +3510,15 @@ public:
 			camMove = vec3(ox, oy, oz);
 
 			if (!FirstTime) {
-				if (whoseTurn == 1)
+				if (billBoardMode == 2 || billBoardMode == 3) {
+					//do nothing
+				}
+				else if (whoseTurn == 1) {
 					billBoardMode = 4;
-
-				else if (whoseTurn == 2)
+				}
+				else if (whoseTurn == 2) {
 					billBoardMode = 5;
+				}
 			}
 		}
 
