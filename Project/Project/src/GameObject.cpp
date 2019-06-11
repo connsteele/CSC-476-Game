@@ -24,6 +24,7 @@ GameObject::GameObject(const std::string& gameObjName, std::shared_ptr<Shape>& o
 	this->isCoverTile = false;
 	this->isJumpTile = false;
 	this->isUpperCoverTile = false;
+	this->isHealthTile = false;
 	this->isBoundingTile = false;
 	this->isStaticGeom = isStaticGeom;
 	this->health = 2.0f;

@@ -55,7 +55,7 @@ vec3 p1_bboxSize, p1_bboxCenter;
 mat4 p1_bboxTransform;
 
 // --- Variables to store textures into
-GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial, Tex_playerHighlight, Tex_Turn1, Tex_Turn2;
+GLuint Tex_Floor, Tex_Wall, Tex_Hex, Tex_Fan, Tex_White, Tex_Win1, Tex_Win2, Tex_Tutorial, Tex_playerHighlight, Tex_Turn1, Tex_Turn2, Tex_Health;
 GLuint Tex_Floor_Norm, Tex_Wall_Norm, Tex_Hex_Norm, Tex_Fan_Norm;
 GLuint Texs_Boom[54];
 std::shared_ptr<Program> progTerrain;
@@ -1741,6 +1741,19 @@ public:
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
+		str = resourceDirectory + "/images/healthTex.jpg";
+		strcpy(filepath, str.c_str()); // copy the string into the char array
+		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
+		glGenTextures(1, &Tex_Health);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Tex_Health);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Mip maps for smaller than native size
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // mip maps for larger than normal size
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dataLayout);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
 		str = resourceDirectory + "/images/playerHighlight.png";
 		strcpy(filepath, str.c_str()); // copy the string into the char array
 		dataLayout = stbi_load(filepath, &width, &height, &channels, 4);
@@ -1851,6 +1864,21 @@ public:
                     //Data Structure
                     UniformStructure[i][j] = terrainTemp;
 
+				}
+				else if ((red == 0) && (green == 255) && (blue == 255)) // If the color is light blue upper cover tile
+				{
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, -tileScale / 2.0f, horizontalOffset - i * tileScale);
+					// Make a cube game object and push it back into the array so it is drawn
+					terrainTemp = make_shared<GameObject>("terrain2", cube, resourceDirectory, progTerrain, tilePos, tileOrientation, true, 0, true);
+					sceneTerrainObjs.push_back(terrainTemp);
+					sceneTerrainObjs[sceneTerrainObjs.size() - 1]->isUpperTile = true;
+
+					tilePos = glm::vec3(verticalOffset + j * -tileScale, tileScale / 2.0f, horizontalOffset - i * tileScale);
+					shared_ptr<Weapon> healthPickup = make_shared<Weapon>("healthpick", cube, "../resources/", prog, tilePos, tileOrientation, true, 2, false, 2);
+					weapons.push_back(healthPickup);
+
+					//Data Structure
+					UniformStructure[i][j] = terrainTemp;
 				}
 				else if ((red == 0) && (green == 0) && (blue == 255)) // If the color is blue upper cover tile
 				{
@@ -2696,7 +2724,7 @@ public:
 							//SetMaterial(2, prog);
 						}
 						M->pushMatrix();
-						M->translate(vec3(-1.0f + ( 2 * j ), 4.5f, 0.0f));
+						M->translate(vec3( (-sceneActorGameObjs[i]->health / 2.0f) + (sceneActorGameObjs[i]->health * j ), 4.5f, 0.0f));
 						M->scale(0.5f);
 						glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 						glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
@@ -2905,6 +2933,16 @@ public:
 
 				weapons[i]->step(deltaTime, M, P, curCamEye, curCamCenter, up);
 
+				if (weapons[i]->weaponType == 2 && TexOn) // Scale the health pickups
+				{
+					SetMaterial(5, shader); // Render the health as gold
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, Tex_Health);
+					glActiveTexture(GL_TEXTURE3);
+					glBindTexture(GL_TEXTURE_2D, Tex_Health);
+					M->scale(0.5f);
+				}
+
 				M->rotate(rotato += 0.002f, vec3(0, 1, 0)); // Make the weapons spin around
 
 				if (TexOn) {
@@ -2990,6 +3028,7 @@ public:
 						//SetMaterial(3);
 						//M->scale(vec3(2.f, 2.f, 2.f));
 					}
+
 					else if (sceneTerrainObjs[i]->isBoundingTile)
 					{
 						glActiveTexture(GL_TEXTURE0);
