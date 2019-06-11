@@ -2750,6 +2750,10 @@ public:
 					M->pushMatrix();
 					M->translate(vec3(0.0f, -0.2f + deathTranslations[i], 0.0f));
 					M->scale(0.425f);
+					if (sceneActorGameObjs[i]->team == 2)
+					{
+						M->rotate(M_PI, vec3(1.0f, 0.f, 0.f));
+					}
 					M->rotate(deathRots[i], vec3(1.0f, 0.0f, 0.0f));
 					glUniformMatrix4fv(shader->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
 					roboBody->draw(shader);
@@ -2760,7 +2764,15 @@ public:
 					M->pushMatrix();
 					M->scale(6.0f);
 					// negate the animated rotation and rotate the particles to face upright
-					M->rotate(-deathRots[i] + -(M_PI / 2.0f), vec3(1.0f, 0.0f, 0.0f));
+					if (sceneActorGameObjs[i]->team == 2)
+					{
+						M->rotate(-deathRots[i] + (M_PI / 2.0f), vec3(1.0f, 0.0f, 0.0f));
+					}
+					else
+					{
+						M->rotate(-deathRots[i] + -(M_PI / 2.0f), vec3(1.0f, 0.0f, 0.0f));
+
+					}
 
 					// Render Textured Quads
 					glUniformMatrix4fv(progTerrain->getUniform("M"), 1, GL_FALSE, value_ptr(M->topMatrix()));
