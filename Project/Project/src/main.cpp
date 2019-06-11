@@ -353,7 +353,12 @@ public:
             if (HitResult) {
 				int weaponType = weapons[i]->weaponType;
 				weapons.erase(weapons.begin() + i);
-				possessedActor->currWeapon = weaponType;
+            	if(weaponType == 1){ // Picked up shotgun
+                    possessedActor->currWeapon = weaponType;
+            	}
+            	else if(weaponType == 2){ // Picked up health
+            	    possessedActor->health = possessedActor->health + 1.0f;
+            	}
             	return;
             }
 
