@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.7)
+include(FetchContent)
 
 # Name of the project
 project(lab1)
@@ -37,20 +38,16 @@ if(GLFW_DIR)
   include_directories(${GLFW_DIR}/include)
   target_link_libraries(${CMAKE_PROJECT_NAME} glfw ${GLFW_LIBRARIES})
 else()
-  message(STATUS "GLFW environment variable `GLFW_DIR` not found, GLFW3 must be installed with the system")
+  message(STATUS "GLFW environment variable `GLFW_DIR` not found, Fetching GLFW from Github")
 
-  find_package(PkgConfig)
-  if (PKGCONFIG_FOUND)
-    message(STATUS "PkgConfig found")
-    pkg_search_module(GLFW REQUIRED glfw3)
-    include_directories(${GLFW_INCLUDE_DIRS})
-    target_link_libraries(${CMAKE_PROJECT_NAME} ${GLFW_LIBRARIES})
-  else()
-    message(STATUS "No PkgConfig found")
-    find_package(glfw3 REQUIRED)
-    include_directories(${GLFW_INCLUDE_DIRS})
-    target_link_libraries(${CMAKE_PROJECT_NAME} glfw)
-  endif()
+  FetchContent_Declare(
+    GLFW
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.3.8 # Specify Release Version
+  )
+  # Get and build GLFW
+  FetchContent_MakeAvailable(GLFW)
+  target_link_libraries(${CMAKE_PROJECT_NAME} glfw ${GLFW_LIBRARIES})
 endif()
 
 
@@ -65,7 +62,14 @@ if(GLM_INCLUDE_DIR)
 else()
 # If the GLM_INCLUDE_DIR environment variable is not set, we assume
 # the user has installed GLM properly on their system
-  message(STATUS "GLM environment variable `GLM_INCLUDE_DIR` not found, GLM must be installed with the system")
+  message(STATUS "GLM environment variable `GLM_INCLUDE_DIR` not found, Fetching GLM")
+  FetchContent_Declare(
+    GLM
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG  0.9.9.8
+  )
+  FetchContent_MakeAvailable(GLM)
+  target_link_libraries(${CMAKE_PROJECT_NAME} glm)
 endif()
 
 
